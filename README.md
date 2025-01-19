@@ -27,35 +27,34 @@ docker run -d -p 1969:1969 --rm --name translation-server zotero/translation-ser
 
 ## Usage
 
-Create a new reference:
+Main commands:
+
 ```bash
+# Create a new reference
+# [Omit `--from` to write in a bib file manually in your default text editor. Use `--attach` without any arguments (i.e. omit `paper.pdf`) to attach the latest item in `~/Downloads` (can be configured, see later).]
 pramaana new cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
-```
 
-Omit `--from` to write in a bib file manually in your default text editor. Use `--attach` without any arguments (i.e. omit `paper.pdf`) to attach the latest item in `~/Downloads` (can be configured, see later).
-
-Update a reference:
-
-```bash
+# Update a reference:
 pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
-```
 
-Run all configured exports (omit arguments to run all exports, see configuration below):
-
-```bash
+# Run all configured exports (omit arguments to run all exports, see configuration below):
 pramaana export id1 id2
-```
 
-Find in all bibliographic information:
+# Find in all bibliographic information:
+pramaana find sutton
 
-```bash
-pramaana find
-```
-
-Import from Zotero:
-
-```bash
+# Import from Zotero:
 pramaana import /path/to/zotero_dir
+```
+
+Basic commands (all of these support the basic options supported by the commands they wrap, e.g. `rm -rf`):
+
+```bash
+pramaana ls # or pramaana ls /path/to/subdir
+pramaana rm path/to/subdir
+pramaana trash path/to/subdir # if trash-cli is installed
+pramaana show cs/ai_books/sutton_barto/ # shows bibliographic content
+pramaana open cs/ai_books/sutton_barto/paper.pdf # opens file or directory in default application
 ```
 
 ## Configuration
@@ -96,7 +95,7 @@ pip install -e ".[dev]"
 - [x] make the `.pramaana` references folder configurable
 - [x] make sure `pramaana edit` works as intended
 - [x] `pramaana export id` to run only some exports
-- [ ] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
+- [x] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
 - [ ] make things work nicely with autocomplete, zsh etc.
 - [ ] remove the csl option we don't want it
 - [ ] Make find command work within folders

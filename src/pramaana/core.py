@@ -187,7 +187,7 @@ class Pramaana:
             self._handle_attachment(ref_dir, attachment)
 
         # Process exports
-        self._process_exports()
+        self.export()
 
 
     def _process_export(self, name: str, export: dict):
@@ -290,7 +290,7 @@ class Pramaana:
             self._handle_attachment(ref_dir, attachment)
 
         # Process exports
-        self._process_exports()
+        self.export()
 
     def find(self, query: str) -> List[Dict[str, Any]]:
         """Search for references matching query"""
@@ -359,47 +359,63 @@ class Pramaana:
                 print(f"Warning: Failed to parse {bib_file}: {str(e)}")
                 continue
 
-    def list_refs(self, subdir: Optional[str] = None) -> List[str]:
+    def list_refs(self, subdir: Optional[str] = None, ls_args: List[str] = None):
         """List references in tree structure"""
         base_dir = self.refs_dir
         if subdir:
             base_dir = self.refs_dir / subdir
             if not base_dir.exists():
                 raise PramaanaError(f"Directory not found: {subdir}")
-        
-        # Generate tree structure
-        tree_lines = []
-        prefix_base = "├── "
-        prefix_last = "└── "
-        prefix_indent = "│   "
-        prefix_indent_last = "    "
-        
-        def add_to_tree(path: Path, prefix: str = ""):
-            items = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name))
-            for i, item in enumerate(items):
-                is_last = i == len(items) - 1
-                curr_prefix = prefix_last if is_last else prefix_base
-                tree_lines.append(f"{prefix}{curr_prefix}{item.name}")
-                if item.is_dir():
-                    new_prefix = prefix + (prefix_indent_last if is_last else prefix_indent)
-                    add_to_tree(item, new_prefix)
-        
-        add_to_tree(base_dir)
-        return tree_lines
 
-    def remove(self, path: str):
+    
+        # If ls_args provided, use ls directly
+        if ls_args:
+            cmd = ['ls'] + ls_args + [str(base_dir)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"ls command failed: {e}")
+        else:
+            # Generate tree structure
+            tree_lines = []
+            prefix_base = "├── "
+            prefix_last = "└── "
+            prefix_indent = "│   "
+            prefix_indent_last = "    "
+            
+            def add_to_tree(path: Path, prefix: str = ""):
+                items = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name))
+                for i, item in enumerate(items):
+                    is_last = i == len(items) - 1
+                    curr_prefix = prefix_last if is_last else prefix_base
+                    tree_lines.append(f"{prefix}{curr_prefix}{item.name}")
+                    if item.is_dir():
+                        new_prefix = prefix + (prefix_indent_last if is_last else prefix_indent)
+                        add_to_tree(item, new_prefix)
+            
+            add_to_tree(base_dir)
+            return tree_lines
+
+    def remove(self, path: str,  rm_args: List[str] = None):
         """Remove a file or directory"""
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
-        
-        if full_path.is_file():
-            full_path.unlink()
-        else:
-            shutil.rmtree(full_path)
 
-    def trash(self, path: str):
-        """Move a file or directory to trash"""
+        if rm_args:
+            cmd = ['rm'] + rm_args + [str(full_path)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"rm command failed: {e}")
+        else:        
+            if full_path.is_file():
+                full_path.unlink()
+            else:
+                shutil.rmtree(full_path)
+
+    def trash(self, path: str, trash_args: List[str] = None):
+        """Move to trash with optional trash-cli arguments"""
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
@@ -410,35 +426,44 @@ class Pramaana:
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise PramaanaError("trash-cli not found. Please install it with: sudo apt-get install trash-cli")
         
-        # Use trash command
-        result = subprocess.run(['trash', str(full_path)], capture_output=True, text=True)
+        cmd = ['trash'] + (trash_args or []) + [str(full_path)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise PramaanaError(f"Failed to trash {path}: {result.stderr}")
 
-    def show(self, path: str):
-        """Show contents of a file or directory"""
+    def show(self, path: str, show_args: List[str] = None):
+        """Show contents with optional cat arguments"""
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
         
         if full_path.is_file():
-            with open(full_path) as f:
-                return f.read()
+            target = full_path
         else:
-            # Find and show the bibliography file
+            # Find bibliography file
             bib_files = list(full_path.glob(f"*.{self.config['storage_format']}"))
             if not bib_files:
                 raise PramaanaError(f"No bibliography file found in {path}")
-            with open(bib_files[0]) as f:
+            target = bib_files[0]
+        
+        if show_args:
+            cmd = ['cat'] + show_args + [str(target)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"cat command failed: {e}")
+        else:
+            with open(target) as f:
                 return f.read()
 
-    def open(self, path: str):
-        """Open a file or directory with default application"""
+    def open(self, path: str, open_args: List[str] = None):
+        """Open with optional xdg-open arguments"""
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
         
+        cmd = ['xdg-open'] + (open_args or []) + [str(full_path)]
         try:
-            subprocess.run(['xdg-open', str(full_path)], check=True)
+            subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             raise PramaanaError(f"Failed to open {path}: {e}")

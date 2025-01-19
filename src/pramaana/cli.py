@@ -32,25 +32,31 @@ def main():
     export_parser = subparsers.add_parser('export', help='Run configured exports')
     export_parser.add_argument('exports', nargs='*', help='Names of specific exports to run. If none provided, runs all exports.')
 
+
     # ls command
     ls_parser = subparsers.add_parser('ls', help='List references')
     ls_parser.add_argument('path', nargs='?', help='Subdirectory to list')
+    ls_parser.add_argument('ls_args', nargs=argparse.REMAINDER, help='Additional arguments for ls')
 
     # rm command
     rm_parser = subparsers.add_parser('rm', help='Remove a file or directory')
     rm_parser.add_argument('path', help='Path to remove')
+    rm_parser.add_argument('rm_args', nargs=argparse.REMAINDER, help='Additional arguments for rm')
 
     # trash command
     trash_parser = subparsers.add_parser('trash', help='Move a file or directory to trash')
     trash_parser.add_argument('path', help='Path to move to trash')
+    trash_parser.add_argument('trash_args', nargs=argparse.REMAINDER, help='Additional arguments for trash-cli')
 
-    # show command
+    # show command (similar to cat)
     show_parser = subparsers.add_parser('show', help='Show contents of a file or directory')
     show_parser.add_argument('path', help='Path to show')
+    show_parser.add_argument('show_args', nargs=argparse.REMAINDER, help='Additional arguments for cat')
 
     # open command
     open_parser = subparsers.add_parser('open', help='Open a file or directory')
     open_parser.add_argument('path', help='Path to open')
+    open_parser.add_argument('open_args', nargs=argparse.REMAINDER, help='Additional arguments for xdg-open')
 
     args = parser.parse_args()
     
@@ -113,32 +119,35 @@ def main():
                 print("Running all exports...")
                 pramaana.export()
 
-        # In the command handling section:
         elif args.command == 'ls':
             try:
-                tree = pramaana.list_refs(args.path)
-                if args.path:
-                    print(f"{args.path}")
-                for line in tree:
-                    print(line)
+                if args.ls_args:  # If additional ls arguments provided, use native ls
+                    pramaana.list_refs(args.path, args.ls_args)
+                else:  # Otherwise use our nice tree view
+                    tree = pramaana.list_refs(args.path)
+                    if args.path:
+                        print(f"{args.path}")
+                    for line in tree:
+                        print(line)
             except PramaanaError as e:
                 print(f"Error: {str(e)}", file=sys.stderr)
                 return 1
 
         elif args.command == 'rm':
-            pramaana.remove(args.path)
-            print(f"Removed: {args.path}")
+            pramaana.remove(args.path, args.rm_args)
 
         elif args.command == 'trash':
-            pramaana.trash(args.path)
-            print(f"Moved to trash: {args.path}")
+            pramaana.trash(args.path, args.trash_args)
 
         elif args.command == 'show':
-            content = pramaana.show(args.path)
-            print(content)
+            if args.show_args:
+                pramaana.show(args.path, args.show_args)
+            else:
+                content = pramaana.show(args.path)
+                print(content)
 
         elif args.command == 'open':
-            pramaana.open(args.path)
+            pramaana.open(args.path, args.open_args)
 
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
