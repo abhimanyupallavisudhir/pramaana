@@ -15,19 +15,13 @@ _pramaana() {
         'open:Open with default application'
     )
 
-    local curcontext="$curcontext" state line
-    typeset -A opt_args
-
-    # Cache the data directory path
-    if [[ -z "$_pramaana_data_dir" ]]; then
-        _pramaana_data_dir=$(python3 -c '
-import json, os
-try:
-    with open(os.path.expanduser("~/.pramaana/config.json")) as f:
-        print(os.path.expanduser(json.load(f)["pramaana_path"]))
-except: print("")
-' 2>/dev/null)
-    fi
+    local data_dir
+    data_dir=$(python3 -c '
+import json
+import os
+with open(os.path.expanduser("~/.pramaana/config.json")) as f:
+    print(os.path.expanduser(json.load(f)["pramaana_path"]))
+')
 
     _arguments -C \
         '1: :->command' \
@@ -40,33 +34,23 @@ except: print("")
         args)
             case $words[2] in
                 ls|rm|trash|show|open)
-                    if [[ -n "$_pramaana_data_dir" ]]; then
-                        _path_files -W "$_pramaana_data_dir"
-                    fi
+                    _path_files -W $data_dir
                     ;;
                 export)
-                    # Only read exports when actually completing export command
                     local -a exports
                     exports=( ${(f)"$(python3 -c '
-import json, os
-try:
-    with open(os.path.expanduser("~/.pramaana/config.json")) as f:
-        config = json.load(f)
-        for name in config["exports"].keys():
-            print(name)
-except: pass
-' 2>/dev/null)"} )
+import json
+import os
+with open(os.path.expanduser("~/.pramaana/config.json")) as f:
+    config = json.load(f)
+    for name in config["exports"].keys():
+        print(name)
+')"} )
                     _values 'exports' $exports
                     ;;
             esac
             ;;
     esac
 }
-
-# Cache initialization - only do expensive operations once
-_pramaana_cache_init() {
-    typeset -g _pramaana_data_dir
-}
-_pramaana_cache_init
 
 _pramaana "$@"
