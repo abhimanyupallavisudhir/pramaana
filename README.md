@@ -133,6 +133,6 @@ pip install -e ".[dev]"
 - [x] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
 - [x] make things work nicely with autocomplete, zsh etc.
 - [ ] remove the csl option we don't want it
-- [ ] Make find command work within folders
+- [x] ~~Make find command work within folders~~ changed to grep
 - [ ] Make sure importing from Zotero works
 - [ ] Package it to automatically start the docker process
