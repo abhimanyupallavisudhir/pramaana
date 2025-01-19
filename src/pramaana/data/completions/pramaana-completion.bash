@@ -1,5 +1,3 @@
-# File: pramaana-completion.bash
-
 _pramaana_complete() {
     local cur prev cmd
     COMPREPLY=()
@@ -26,7 +24,7 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
 
     # Handle command-specific completions
     case "${cmd}" in
-        ls|rm|trash|show|open)
+        ls|rm|trash|show|open|edit)
             # Complete with paths from pramaana data directory
             local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
             COMPREPLY=( $(printf "%s\n" "${paths}") )
