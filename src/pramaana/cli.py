@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import traceback
 from .core import Pramaana, PramaanaError
 
 def main():
@@ -26,7 +27,10 @@ def main():
     # import command
     import_parser = subparsers.add_parser('import', help='Import from Zotero')
     import_parser.add_argument('zotero_dir', help='Path to Zotero data directory')
-    
+
+    # export command
+    export_parser = subparsers.add_parser('export', help='Run configured exports manually')
+
     args = parser.parse_args()
     
     if not args.command:
@@ -79,12 +83,18 @@ def main():
         elif args.command == 'import':
             print(f"Importing from Zotero directory: {args.zotero_dir}")
             pramaana.import_zotero(args.zotero_dir)
+
+        elif args.command == 'export':
+            print("Running exports...")
+            pramaana.export()
+            print("Exports complete")
             
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"Unexpected error: {str(e)}", file=sys.stderr)
+        traceback.print_exc()
         return 1
         
     return 0
