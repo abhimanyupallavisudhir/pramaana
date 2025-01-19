@@ -92,10 +92,10 @@ pip install -e ".[dev]"
 
 ## TODO
 
-- make the `.pramaana` references folder configurable
-- make sure `pramaana edit` works as intended
-- `pramaana export id` to run only some exports
-- `pramaana ls`
-- Make find command work within folders
-- Make sure importing from Zotero works
-- Package it to automatically 
+- [x] make the `.pramaana` references folder configurable
+- [x] make sure `pramaana edit` works as intended
+- [ ] `pramaana export id` to run only some exports
+- [ ] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana cat`
+- [ ] Make find command work within folders
+- [ ] Make sure importing from Zotero works
+- [ ] Package it to automatically 

@@ -272,7 +272,7 @@ class Pramaana:
             f.write(bibtex_content)
 
         # Handle attachment if provided
-        if attachment:
+        if attachment is not None:
             self._handle_attachment(ref_dir, attachment)
 
         # Process exports
