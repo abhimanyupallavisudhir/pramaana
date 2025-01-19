@@ -69,6 +69,7 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
     "attachment_mode": "cp",  # cp, mv, or ln
     "attachment_watch_dir": "~/Downloads",
     "pramaana_path": "~/.pramaana_data",  # default location for references
+    "translation_server": "http://localhost:1969",  
     "exports": {
         "everything": { # give an ID for each export
             "source": ["/.exports/*"],

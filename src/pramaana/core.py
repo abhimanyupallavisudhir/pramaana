@@ -11,20 +11,19 @@ import bibtexparser
 from datetime import datetime
 import pathspec
 
-TRANSLATION_SERVER = "http://localhost:1969"
 DEFAULT_CONFIG = {
-    "storage_format": "bib",  # or "csl"
-    "attachment_mode": "cp",  # cp, mv, or ln
+    "storage_format": "bib",
+    "attachment_mode": "cp",
     "attachment_watch_dir": "~/Downloads",
-    "pramaana_path": "~/.pramaana_data",  # default location for references
+    "pramaana_path": "~/.pramaana_data",
+    "translation_server": "http://localhost:1969",  
     "exports": {
-        "everything": { # give an ID for each export
+        "everything": {
             "source": ["/.exports/*"],
             "destination": "~/.pramaana_data/.exports/all_refs.bib",
         }
     },
 }
-
 
 class PramaanaError(Exception):
     pass
@@ -64,7 +63,7 @@ class Pramaana:
         try:
             # First request to get metadata
             response = requests.post(
-                f"{TRANSLATION_SERVER}/web",
+                f"{self.config["translation_server"]}/web",
                 data=url,
                 headers={"Content-Type": "text/plain"},
             )
@@ -78,7 +77,7 @@ class Pramaana:
 
                 # Make second request with selection
                 response = requests.post(
-                    f"{TRANSLATION_SERVER}/web",
+                    f"{self.config["translation_server"]}/web",
                     json=data,
                     headers={"Content-Type": "application/json"},
                 )
@@ -89,7 +88,7 @@ class Pramaana:
             # Convert to BibTeX
             items = response.json()
             export_response = requests.post(
-                f"{TRANSLATION_SERVER}/export?format=bibtex",
+                f"{self.config["translation_server"]}/export?format=bibtex",
                 json=items,
                 headers={"Content-Type": "application/json"},
             )
