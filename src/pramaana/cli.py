@@ -24,9 +24,10 @@ def main():
     find_parser = subparsers.add_parser('find', help='Search for references')
     find_parser.add_argument('query', help='Search query')
 
+    # grep command
     grep_parser = subparsers.add_parser('grep', help='Search references using grep')
     grep_parser.add_argument('pattern', help='Search pattern')
-    grep_parser.add_argument('path', nargs='?', help='Path to search in')
+    grep_parser.add_argument('paths', nargs='*', help='Paths to search in')
     grep_parser.add_argument('grep_args', nargs=argparse.REMAINDER, 
                            help='Additional arguments for grep (e.g. -i for case-insensitive)')
     
@@ -114,7 +115,7 @@ def main():
                     print(result['content'][:200] + "..." if len(result['content']) > 200 else result['content'])
 
         elif args.command == 'grep':
-            pramaana.grep(args.pattern, args.path, args.grep_args)
+            pramaana.grep(args.pattern, args.paths, args.grep_args)
 
         elif args.command == 'import':
             print(f"Importing from Zotero directory: {args.zotero_dir}")
