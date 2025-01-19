@@ -33,7 +33,7 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
             ;;
         args)
             case $words[2] in
-                ls|rm|trash|show|open|edit)
+                ls|rm|trash|show|open|edit|grep)
                     _path_files -W $data_dir
                     ;;
                 export)

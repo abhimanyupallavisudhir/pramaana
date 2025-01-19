@@ -310,6 +310,35 @@ class Pramaana:
 
         return results
 
+    def grep(self, pattern: str, path: Optional[str] = None, grep_args: List[str] = None):
+        """Search references using grep
+        
+        Args:
+            pattern: Search pattern
+            path: Optional path to search in (relative to refs_dir)
+            grep_args: Additional arguments to pass to grep
+        """
+        search_dir = self.refs_dir
+        if path:
+            search_dir = self.refs_dir / path
+            if not search_dir.exists():
+                raise PramaanaError(f"Path not found: {path}")
+        
+        # Build grep command
+        cmd = ['grep'] + (grep_args or [])
+        # Add pattern
+        cmd.append(pattern)
+        # Add files to search
+        cmd.extend([
+            str(f) for f in search_dir.rglob(f"*.{self.config['storage_format']}")
+        ])
+        
+        try:
+            subprocess.run(cmd, check=False)  # Don't check=True as grep returns 1 if no matches
+        except subprocess.CalledProcessError as e:
+            if e.returncode != 1:  # 1 means no matches, which is fine
+                raise PramaanaError(f"grep command failed: {e}")
+
     def import_zotero(self, zotero_dir: str):
         """Import references from Zotero data directory"""
         zotero_path = Path(os.path.expanduser(zotero_dir))

@@ -41,8 +41,9 @@ pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=
 # Run all configured exports (omit arguments to run all exports, see configuration below):
 pramaana export id1 id2
 
-# Find in all bibliographic information:
-pramaana find sutton
+# Search for text
+pramaana grep "sutton" cs/ # supports all grep options, but must be given at end
+pramaana grep "sutton" cs/ --include="*.bib" # to only search .bib files (rather than e.g. pdf)
 
 # Import from Zotero:
 pramaana import /path/to/zotero_dir
