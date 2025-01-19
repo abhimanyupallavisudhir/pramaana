@@ -16,18 +16,17 @@ DEFAULT_CONFIG = {
     "attachment_mode": "cp",  # cp, mv, or ln
     "attachment_watch_dir": "~/Downloads",
     "pramaana_path": "~/.pramaana_data",  # default location for references
-    "exports": [
-        {
-            "source": ["/.exports/"],
-            "destination": "~/.pramaana/.exports/all_refs.bib",
+    "exports": {
+        "everything": { # give an ID for each export
+            "source": ["/.exports/*"],
+            "destination": "~/.pramaana_data/.exports/all_refs.bib",
         }
-    ],
+    },
 }
 
 
 class PramaanaError(Exception):
     pass
-
 
 
 class Pramaana:
@@ -190,47 +189,61 @@ class Pramaana:
         self._process_exports()
 
 
-    def _process_exports(self):
-        """Process configured exports, overwriting destination files completely"""
-        for export in self.config['exports']:
-            sources = export['source']
-            dest_path = os.path.expanduser(export['destination'])
-            print(f"Processing export to: {dest_path}")
-            
-            # Create pathspec from gitignore-style patterns
-            spec = pathspec.PathSpec.from_lines(
-                pathspec.patterns.GitWildMatchPattern,
-                sources
-            )
-            
-            # Collect all references that match the patterns
-            all_refs = []
-            # Now search in refs_dir instead of config_dir
-            for bib_file in self.refs_dir.rglob(f"*.{self.config['storage_format']}"):
-                # Get path relative to refs_dir for matching
-                rel_path = str(bib_file.relative_to(self.refs_dir))
-                if not spec.match_file(rel_path):
-                    print(f"Including file: {bib_file}")
-                    with open(bib_file) as f:
-                        content = f.read().strip()
-                        if content:
-                            all_refs.append(content)
-                else:
-                    print(f"Excluding file: {bib_file}")
-            
-            print(f"Writing {len(all_refs)} references to {dest_path}")
-            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            with open(dest_path, 'w', encoding='utf-8') as f:
-                content = '\n\n'.join(all_refs)
-                if content:
-                    content += '\n'
-                f.write(content)
+    def _process_export(self, name: str, export: dict):
+        """Process a single export configuration"""
+        dest_path = os.path.expanduser(export['destination'])
+        print(f"Writing to: {dest_path}")
+        
+        # Create pathspec from gitignore-style patterns
+        spec = pathspec.PathSpec.from_lines(
+            pathspec.patterns.GitWildMatchPattern,
+            export['source']
+        )
+        
+        # Collect all references that match the patterns
+        all_refs = []
+        for bib_file in self.refs_dir.rglob(f"*.{self.config['storage_format']}"):
+            rel_path = str(bib_file.relative_to(self.refs_dir))
+            if not spec.match_file(rel_path):
+                print(f"Including file: {bib_file}")
+                with open(bib_file) as f:
+                    content = f.read().strip()
+                    if content:
+                        all_refs.append(content)
+            else:
+                print(f"Excluding file: {bib_file}")
+        
+        print(f"Writing {len(all_refs)} references to {dest_path}")
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        with open(dest_path, 'w', encoding='utf-8') as f:
+            content = '\n\n'.join(all_refs)
+            if content:
+                content += '\n'
+            f.write(content)
 
-    def export(self):
-        """Run export processing manually"""
-        if not self.config["exports"]:
+    def export(self, export_names: Optional[List[str]] = None):
+        """Run export processing manually
+        
+        Args:
+            export_names: Optional list of export names to run. If None, runs all exports.
+        """
+        if not self.config['exports']:
             raise PramaanaError("No exports configured in config file")
-        self._process_exports()
+            
+        # If no names provided, run all exports
+        if export_names is None:
+            export_names = list(self.config['exports'].keys())
+            
+        # Validate export names
+        invalid_names = [name for name in export_names if name not in self.config['exports']]
+        if invalid_names:
+            raise PramaanaError(f"Unknown export(s): {', '.join(invalid_names)}")
+            
+        # Run selected exports
+        for name in export_names:
+            print(f"Processing export '{name}'...")
+            export = self.config['exports'][name]
+            self._process_export(name, export)
 
     def edit(
         self,

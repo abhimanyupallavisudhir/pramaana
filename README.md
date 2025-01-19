@@ -40,10 +40,10 @@ Update a reference:
 pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
 ```
 
-Run all configured exports (see later):
+Run all configured exports (omit arguments to run all exports, see configuration below):
 
 ```bash
-pramaana export
+pramaana export id1 id2
 ```
 
 Find in all bibliographic information:
@@ -62,17 +62,18 @@ pramaana import /path/to/zotero_dir
 
 Pramaana stores its configuration in `~/.pramaana/config.json`. The default configuration can be customized:
 
-```json
+```python
 {
-  "storage_format": "bib",
-  "attachment_mode": "cp",
-  "attachment_watch_dir": "~/Downloads",
-  "exports": [
-      {
-          "source": ["/.exports/"],
-          "destination": "~/.pramaana/.exports/all_refs.bib"
-      }
-  ]
+    "storage_format": "bib",  # or "csl"
+    "attachment_mode": "cp",  # cp, mv, or ln
+    "attachment_watch_dir": "~/Downloads",
+    "pramaana_path": "~/.pramaana_data",  # default location for references
+    "exports": {
+        "everything": { # give an ID for each export
+            "source": ["/.exports/*"],
+            "destination": "~/.pramaana_data/.exports/all_refs.bib",
+        }
+    },
 }
 ```
 
@@ -94,8 +95,8 @@ pip install -e ".[dev]"
 
 - [x] make the `.pramaana` references folder configurable
 - [x] make sure `pramaana edit` works as intended
-- [ ] `pramaana export id` to run only some exports
+- [x] `pramaana export id` to run only some exports
 - [ ] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana cat`
 - [ ] Make find command work within folders
 - [ ] Make sure importing from Zotero works
-- [ ] Package it to automatically 
+- [ ] Package it to automatically start the docker process

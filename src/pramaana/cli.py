@@ -29,7 +29,8 @@ def main():
     import_parser.add_argument('zotero_dir', help='Path to Zotero data directory')
 
     # export command
-    export_parser = subparsers.add_parser('export', help='Run configured exports manually')
+    export_parser = subparsers.add_parser('export', help='Run configured exports')
+    export_parser.add_argument('exports', nargs='*', help='Names of specific exports to run. If none provided, runs all exports.')
 
     args = parser.parse_args()
     
@@ -85,9 +86,12 @@ def main():
             pramaana.import_zotero(args.zotero_dir)
 
         elif args.command == 'export':
-            print("Running exports...")
-            pramaana.export()
-            print("Exports complete")
+            if args.exports:
+                print(f"Running selected exports: {', '.join(args.exports)}")
+                pramaana.export(args.exports)
+            else:
+                print("Running all exports...")
+                pramaana.export()
             
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
