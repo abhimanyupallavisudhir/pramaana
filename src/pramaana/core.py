@@ -36,6 +36,24 @@ class Pramaana:
         self.config = self._load_config()
         self.refs_dir = Path(os.path.expanduser(self.config["pramaana_path"]))
 
+        # Check translation server on init
+        self._check_translation_server()
+
+    def _check_translation_server(self):
+        """Check if translation server is running"""
+        try:
+            response = requests.get(
+                f"{self.config['translation_server']}/web",
+                timeout=5
+            )
+            if response.status_code not in (400, 200):  # 400 is ok, means it wants input
+                raise PramaanaError(f"Translation server returned unexpected status: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            raise PramaanaError(
+                f"Cannot connect to translation server at {self.config['translation_server']}. "
+                "Make sure it's running with: docker run -d -p 1969:1969 zotero/translation-server"
+            )
+
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from file or create default if it doesn't exist"""
         if not self.config_dir.exists():
@@ -59,47 +77,68 @@ class Pramaana:
         return self.refs_dir / ref_path
 
     def _fetch_from_url(self, url: str) -> Dict[str, Any]:
-        """Fetch metadata from URL using Zotero translation server"""
-        try:
-            # First request to get metadata
-            response = requests.post(
-                f"{self.config["translation_server"]}/web",
-                data=url,
-                headers={"Content-Type": "text/plain"},
-            )
+            """Fetch metadata from URL using Zotero translation server"""
+            # Define headers that mimic a real browser + identify our tool
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 pramaana/0.1.0 (https://github.com/yourusername/pramaana)',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Connection': 'keep-alive',
+            }
 
-            if response.status_code == 300:
-                # Multiple choices, select first one
-                data = response.json()
-                first_key = list(data["items"].keys())[0]
-                selected_items = {first_key: data["items"][first_key]}
-                data["items"] = selected_items
-
-                # Make second request with selection
+            try:
+                # First request to get metadata
                 response = requests.post(
                     f"{self.config["translation_server"]}/web",
-                    json=data,
-                    headers={"Content-Type": "application/json"},
+                    data=url,
+                    headers={'Content-Type': 'text/plain', **headers},
+                    timeout=30  # Add timeout
                 )
-
-            if response.status_code != 200:
-                raise PramaanaError(f"Translation server error: {response.status_code}")
-
-            # Convert to BibTeX
-            items = response.json()
-            export_response = requests.post(
-                f"{self.config["translation_server"]}/export?format=bibtex",
-                json=items,
-                headers={"Content-Type": "application/json"},
-            )
-
-            if export_response.status_code != 200:
-                raise PramaanaError("Failed to convert to BibTeX")
-
-            return {"bibtex": export_response.text, "raw": items}
-
-        except requests.exceptions.RequestException as e:
-            raise PramaanaError(f"Network error: {str(e)}")
+                
+                if response.status_code == 500:
+                    # Try to get more detailed error from response
+                    try:
+                        error_details = response.json()
+                        raise PramaanaError(f"Translation server error: {error_details}")
+                    except:
+                        raise PramaanaError(f"Translation server error (500) for URL: {url}")
+                
+                if response.status_code == 300:
+                    # Multiple choices, select first one
+                    data = response.json()
+                    first_key = list(data["items"].keys())[0]
+                    selected_items = {first_key: data["items"][first_key]}
+                    data["items"] = selected_items
+                    
+                    # Make second request with selection
+                    response = requests.post(
+                        f"{self.config["translation_server"]}/web",
+                        json=data,
+                        headers={'Content-Type': 'application/json', **headers},
+                        timeout=30
+                    )
+                
+                if response.status_code != 200:
+                    raise PramaanaError(f"Translation server error: {response.status_code}")
+                    
+                # Convert to BibTeX
+                items = response.json()
+                export_response = requests.post(
+                    f"{self.config["translation_server"]}/export?format=bibtex",
+                    json=items,
+                    headers={'Content-Type': 'application/json', **headers},
+                    timeout=30
+                )
+                
+                if export_response.status_code != 200:
+                    raise PramaanaError("Failed to convert to BibTeX")
+                    
+                return {"bibtex": export_response.text, "raw": items}
+                
+            except requests.exceptions.Timeout:
+                raise PramaanaError(f"Timeout while fetching metadata from {url}")
+            except requests.exceptions.RequestException as e:
+                raise PramaanaError(f"Network error: {str(e)}")
 
     def _handle_attachment(self, ref_dir: Path, attachment_path: Optional[str]):
         """Handle attachment based on configuration
