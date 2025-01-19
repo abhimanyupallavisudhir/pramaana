@@ -1,5 +1,3 @@
-# src/pramaana/core.py
-
 import os
 import json
 import subprocess
@@ -93,32 +91,42 @@ class Pramaana:
         except requests.exceptions.RequestException as e:
             raise PramaanaError(f"Network error: {str(e)}")
 
-    def _handle_attachment(self, ref_dir: Path, attachment_path: str):
-        """Handle attachment based on configuration"""
-        if not attachment_path:
-            # If no path provided, try to get latest file from watch dir
+    def _handle_attachment(self, ref_dir: Path, attachment_path: Optional[str]):
+        """Handle attachment based on configuration
+        
+        Args:
+            ref_dir: Directory to store the attachment in
+            attachment_path: Path to attachment file, or empty string to use latest from watch dir,
+                        or None to skip attachment
+        """
+        if attachment_path is None:
+            return  # No attachment requested
+            
+        final_path = attachment_path
+        if attachment_path == '':  # Empty string means use latest from watch dir
             watch_dir = Path(os.path.expanduser(self.config['attachment_watch_dir']))
             if not watch_dir.exists():
-                return
+                raise PramaanaError(f"Watch directory not found: {watch_dir}")
                 
             files = sorted(watch_dir.glob('*'), key=lambda x: x.stat().st_mtime, reverse=True)
             if not files:
-                return
+                raise PramaanaError(f"No files found in watch directory: {watch_dir}")
                 
-            attachment_path = str(files[0])
+            final_path = str(files[0])
+            print(f"Using latest file for attachment: {final_path}")
             
-        attachment_path = os.path.expanduser(attachment_path)
-        if not os.path.exists(attachment_path):
-            raise PramaanaError(f"Attachment not found: {attachment_path}")
+        final_path = os.path.expanduser(final_path)
+        if not os.path.exists(final_path):
+            raise PramaanaError(f"Attachment not found: {final_path}")
             
-        dest = ref_dir / os.path.basename(attachment_path)
+        dest = ref_dir / os.path.basename(final_path)
         
         if self.config['attachment_mode'] == 'cp':
-            shutil.copy2(attachment_path, dest)
+            shutil.copy2(final_path, dest)
         elif self.config['attachment_mode'] == 'mv':
-            shutil.move(attachment_path, dest)
+            shutil.move(final_path, dest)
         elif self.config['attachment_mode'] == 'ln':
-            os.link(attachment_path, dest)
+            os.link(final_path, dest)
         else:
             raise PramaanaError(f"Invalid attachment mode: {self.config['attachment_mode']}")
 
@@ -153,7 +161,7 @@ class Pramaana:
             f.write(bibtex_content)
             
         # Handle attachment if provided
-        if attachment:
+        if attachment is not None:
             self._handle_attachment(ref_dir, attachment)
             
         # Process exports
@@ -287,6 +295,3 @@ class Pramaana:
             except Exception as e:
                 print(f"Warning: Failed to parse {bib_file}: {str(e)}")
                 continue
-    
-    # [Previous implementation of Pramaana class methods]
-    # Copy all the methods from our previous implementation

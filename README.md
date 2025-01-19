@@ -2,6 +2,8 @@
 
 A minimalist command-line reference manager that works with BibTeX files and the Zotero translation server.
 
+(basically everything was written by Claude)
+
 ## Installation
 
 The recommended way to install Pramaana is using pipx:

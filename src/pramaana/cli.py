@@ -1,5 +1,3 @@
-# src/pramaana/cli.py
-
 import argparse
 import os
 import sys
@@ -45,11 +43,16 @@ def main():
                 with open(os.path.expanduser(args.source)) as f:
                     bibtex = f.read()
             
+            # Convert None attach to empty string if flag was used
+            attachment = None
+            if args.attach is not None:  # --attach was used
+                attachment = args.attach or ''  # will be '' if no value provided
+            
             if args.command == 'new':
                 pramaana.new(
                     args.path,
                     source_url=None if source_is_file else args.source,
-                    attachment=args.attach,
+                    attachment=attachment,
                     bibtex=bibtex
                 )
                 print(f"Created reference: {args.path}")
@@ -57,7 +60,7 @@ def main():
                 pramaana.edit(
                     args.path,
                     source_url=None if source_is_file else args.source,
-                    attachment=args.attach,
+                    attachment=attachment,
                     bibtex=bibtex
                 )
                 print(f"Updated reference: {args.path}")
