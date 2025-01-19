@@ -2,6 +2,7 @@ import os
 import json
 import subprocess
 import shutil
+import shlex
 from pathlib import Path
 import tempfile
 import requests
@@ -357,3 +358,87 @@ class Pramaana:
             except Exception as e:
                 print(f"Warning: Failed to parse {bib_file}: {str(e)}")
                 continue
+
+    def list_refs(self, subdir: Optional[str] = None) -> List[str]:
+        """List references in tree structure"""
+        base_dir = self.refs_dir
+        if subdir:
+            base_dir = self.refs_dir / subdir
+            if not base_dir.exists():
+                raise PramaanaError(f"Directory not found: {subdir}")
+        
+        # Generate tree structure
+        tree_lines = []
+        prefix_base = "├── "
+        prefix_last = "└── "
+        prefix_indent = "│   "
+        prefix_indent_last = "    "
+        
+        def add_to_tree(path: Path, prefix: str = ""):
+            items = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name))
+            for i, item in enumerate(items):
+                is_last = i == len(items) - 1
+                curr_prefix = prefix_last if is_last else prefix_base
+                tree_lines.append(f"{prefix}{curr_prefix}{item.name}")
+                if item.is_dir():
+                    new_prefix = prefix + (prefix_indent_last if is_last else prefix_indent)
+                    add_to_tree(item, new_prefix)
+        
+        add_to_tree(base_dir)
+        return tree_lines
+
+    def remove(self, path: str):
+        """Remove a file or directory"""
+        full_path = self.refs_dir / path
+        if not full_path.exists():
+            raise PramaanaError(f"Path not found: {path}")
+        
+        if full_path.is_file():
+            full_path.unlink()
+        else:
+            shutil.rmtree(full_path)
+
+    def trash(self, path: str):
+        """Move a file or directory to trash"""
+        full_path = self.refs_dir / path
+        if not full_path.exists():
+            raise PramaanaError(f"Path not found: {path}")
+        
+        # Check if trash-cli is installed
+        try:
+            subprocess.run(['trash', '--version'], capture_output=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            raise PramaanaError("trash-cli not found. Please install it with: sudo apt-get install trash-cli")
+        
+        # Use trash command
+        result = subprocess.run(['trash', str(full_path)], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise PramaanaError(f"Failed to trash {path}: {result.stderr}")
+
+    def show(self, path: str):
+        """Show contents of a file or directory"""
+        full_path = self.refs_dir / path
+        if not full_path.exists():
+            raise PramaanaError(f"Path not found: {path}")
+        
+        if full_path.is_file():
+            with open(full_path) as f:
+                return f.read()
+        else:
+            # Find and show the bibliography file
+            bib_files = list(full_path.glob(f"*.{self.config['storage_format']}"))
+            if not bib_files:
+                raise PramaanaError(f"No bibliography file found in {path}")
+            with open(bib_files[0]) as f:
+                return f.read()
+
+    def open(self, path: str):
+        """Open a file or directory with default application"""
+        full_path = self.refs_dir / path
+        if not full_path.exists():
+            raise PramaanaError(f"Path not found: {path}")
+        
+        try:
+            subprocess.run(['xdg-open', str(full_path)], check=True)
+        except subprocess.CalledProcessError as e:
+            raise PramaanaError(f"Failed to open {path}: {e}")

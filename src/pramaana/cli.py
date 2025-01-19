@@ -32,6 +32,26 @@ def main():
     export_parser = subparsers.add_parser('export', help='Run configured exports')
     export_parser.add_argument('exports', nargs='*', help='Names of specific exports to run. If none provided, runs all exports.')
 
+    # ls command
+    ls_parser = subparsers.add_parser('ls', help='List references')
+    ls_parser.add_argument('path', nargs='?', help='Subdirectory to list')
+
+    # rm command
+    rm_parser = subparsers.add_parser('rm', help='Remove a file or directory')
+    rm_parser.add_argument('path', help='Path to remove')
+
+    # trash command
+    trash_parser = subparsers.add_parser('trash', help='Move a file or directory to trash')
+    trash_parser.add_argument('path', help='Path to move to trash')
+
+    # show command
+    show_parser = subparsers.add_parser('show', help='Show contents of a file or directory')
+    show_parser.add_argument('path', help='Path to show')
+
+    # open command
+    open_parser = subparsers.add_parser('open', help='Open a file or directory')
+    open_parser.add_argument('path', help='Path to open')
+
     args = parser.parse_args()
     
     if not args.command:
@@ -92,7 +112,34 @@ def main():
             else:
                 print("Running all exports...")
                 pramaana.export()
-            
+
+        # In the command handling section:
+        elif args.command == 'ls':
+            try:
+                tree = pramaana.list_refs(args.path)
+                if args.path:
+                    print(f"{args.path}")
+                for line in tree:
+                    print(line)
+            except PramaanaError as e:
+                print(f"Error: {str(e)}", file=sys.stderr)
+                return 1
+
+        elif args.command == 'rm':
+            pramaana.remove(args.path)
+            print(f"Removed: {args.path}")
+
+        elif args.command == 'trash':
+            pramaana.trash(args.path)
+            print(f"Moved to trash: {args.path}")
+
+        elif args.command == 'show':
+            content = pramaana.show(args.path)
+            print(content)
+
+        elif args.command == 'open':
+            pramaana.open(args.path)
+
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         return 1
