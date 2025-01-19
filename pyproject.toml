@@ -20,9 +20,13 @@ dependencies = [
 
 [project.scripts]
 pramaana = "pramaana.cli:main"
+pramaana-install-completions = "pramaana.install_completions:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pramaana"]
+
+[tool.hatch.build.force-include]
+"src/pramaana/data" = "pramaana/data"
 
 [project.data-files]
 "bash-completion/completions" = ["completions/pramaana-completion.bash"]

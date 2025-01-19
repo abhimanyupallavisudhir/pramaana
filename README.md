@@ -81,18 +81,26 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 ## Shell Completion
 
 ### Bash
-```bash
-# If installed via pip/pipx
-source /usr/local/share/bash-completion/completions/pramaana-completion.bash
 
-# If installed via system package manager
-source /usr/share/bash-completion/completions/pramaana-completion.bash
+Run
+
+```bash
+pramaana-install-completions
+```
+Then for bash, add to your ~/.bashrc:
+
+```bash
+if [ -d ~/.local/share/bash-completion/completions ]; then
+    for f in ~/.local/share/bash-completion/completions/*; do
+        . "$f"
+    done
+fi
 ```
 
-### Zsh
-The completion file is automatically installed in a standard location. Just add to your `~/.zshrc`:
+For zsh, add to your ~/.zshrc:
 
 ```zsh
+fpath=(~/.zsh/completion $fpath)
 autoload -Uz compinit
 compinit
 ```
