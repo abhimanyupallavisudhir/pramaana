@@ -98,3 +98,4 @@ pip install -e ".[dev]"
 - `pramaana ls`
 - Make find command work within folders
 - Make sure importing from Zotero works
+- Package it to automatically 

@@ -15,6 +15,7 @@ DEFAULT_CONFIG = {
     "storage_format": "bib",  # or "csl"
     "attachment_mode": "cp",  # cp, mv, or ln
     "attachment_watch_dir": "~/Downloads",
+    "pramaana_path": "~/.pramaana_data",  # default location for references
     "exports": [
         {
             "source": ["/.exports/"],
@@ -28,11 +29,13 @@ class PramaanaError(Exception):
     pass
 
 
+
 class Pramaana:
     def __init__(self, config_dir: Optional[str] = None):
         self.config_dir = Path(config_dir or os.path.expanduser("~/.pramaana"))
         self.config_file = self.config_dir / "config.json"
         self.config = self._load_config()
+        self.refs_dir = Path(os.path.expanduser(self.config["pramaana_path"]))
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from file or create default if it doesn't exist"""
@@ -54,7 +57,7 @@ class Pramaana:
 
     def _get_reference_dir(self, ref_path: str) -> Path:
         """Get the full path to a reference directory"""
-        return self.config_dir / ref_path
+        return self.refs_dir / ref_path
 
     def _fetch_from_url(self, url: str) -> Dict[str, Any]:
         """Fetch metadata from URL using Zotero translation server"""
@@ -202,30 +205,26 @@ class Pramaana:
             
             # Collect all references that match the patterns
             all_refs = []
-            for bib_file in self.config_dir.rglob(f"*.{self.config['storage_format']}"):
-                # Get path relative to config_dir for matching
-                rel_path = str(bib_file.relative_to(self.config_dir))
-                # Files are included if they DON'T match the exclude patterns
+            # Now search in refs_dir instead of config_dir
+            for bib_file in self.refs_dir.rglob(f"*.{self.config['storage_format']}"):
+                # Get path relative to refs_dir for matching
+                rel_path = str(bib_file.relative_to(self.refs_dir))
                 if not spec.match_file(rel_path):
                     print(f"Including file: {bib_file}")
                     with open(bib_file) as f:
                         content = f.read().strip()
-                        print(f"Content length: {len(content)}")
-                        print(f"First 100 chars: {content[:100]}")
                         if content:
                             all_refs.append(content)
                 else:
                     print(f"Excluding file: {bib_file}")
             
             print(f"Writing {len(all_refs)} references to {dest_path}")
-            print(f"Total content length: {sum(len(ref) for ref in all_refs)}")
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             with open(dest_path, 'w', encoding='utf-8') as f:
                 content = '\n\n'.join(all_refs)
                 if content:
                     content += '\n'
                 f.write(content)
-                print(f"Wrote {len(content)} bytes to file")
 
     def export(self):
         """Run export processing manually"""
