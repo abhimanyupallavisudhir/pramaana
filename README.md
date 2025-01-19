@@ -12,6 +12,7 @@ The recommended way to install Pramaana is using pipx:
 
 ```bash
 pipx install pramaana
+pramaana-install-completions # to install shell completions; see below though
 ```
 
 This will install Pramaana in an isolated environment while making the `pramaana` command available globally.
@@ -80,14 +81,18 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 
 ## Shell Completion
 
-### Bash
+You can get:
 
-Run
+- Command completion: `pramaana <tab>` shows all available commands
+- Path completion: `pramaana show cs/<tab>` shows subdirectories
+- Export completion: `pramaana export <tab>` shows configured export names
+
+After installing, run
 
 ```bash
 pramaana-install-completions
 ```
-Then for bash, add to your ~/.bashrc:
+Then for bash, add to your `~/.bashrc`:
 
 ```bash
 if [ -d ~/.local/share/bash-completion/completions ]; then
@@ -97,13 +102,15 @@ if [ -d ~/.local/share/bash-completion/completions ]; then
 fi
 ```
 
-For zsh, add to your ~/.zshrc:
+For zsh, add to your `~/.zshrc`:
 
 ```zsh
 fpath=(~/.zsh/completion $fpath)
 autoload -Uz compinit
 compinit
 ```
+
+This does add like half a second to zsh startup time though (bash seems fine).
 
 ## Development
 
@@ -123,7 +130,7 @@ pip install -e ".[dev]"
 - [x] make sure `pramaana edit` works as intended
 - [x] `pramaana export id` to run only some exports
 - [x] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
-- [ ] make things work nicely with autocomplete, zsh etc.
+- [x] make things work nicely with autocomplete, zsh etc.
 - [ ] remove the csl option we don't want it
 - [ ] Make find command work within folders
 - [ ] Make sure importing from Zotero works
