@@ -1,17 +1,17 @@
 # Pramaana
 
-A minimalist command-line reference manager that works with BibTeX files and the Zotero translation server.
+The great thing about Zotero is its actively-maintained translation server (i.e. which parses a webpage and gets its metadata to generate a bib file). The thing I don't like is its client. Ideally you want references to be sorted into nested folders, along with corresponding pdfs etc. -- then you can just move them around or edit them however, in your terminal, file manager whatever without doing tons of point-and-click operations in Zotero client.
 
-Basically works like Zotero with BetterBibTeX plus Zotmoov (or the earlier Zotfile).
+`pramaana` is a minimalist command-line reference manager that works with BibTeX files and the Zotero translation server. Basically works like Zotero with BetterBibTeX plus Zotmoov (or the earlier Zotfile).
 
-(basically everything was written by Claude -- under construction, nothing to install yet)
+In theory this is the perfect and optimal reference manager. Unfortunately it turns out the published Zotero Translation Server module doesn't work as well as what Zotero actually uses. Hopefully that's one day fixed, and then this will really be great.
 
 ## Installation
 
 The recommended way to install Pramaana is using pipx:
 
 ```bash
-pipx install pramaana
+pipx install pramaana # not yet published, lol
 pramaana-install-completions # to install shell completions; see below though
 ```
 
