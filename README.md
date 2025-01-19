@@ -133,7 +133,8 @@ pip install -e ".[dev]"
 - [x] `pramaana export id` to run only some exports
 - [x] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
 - [x] make things work nicely with autocomplete, zsh etc.
-- [ ] remove the csl option we don't want it
+- ~~[ ] remove the csl option we don't want it~~
 - [x] ~~Make find command work within folders~~ changed to grep
 - [ ] Make sure importing from Zotero works
+- [ ] Make sure translation server works for our needs
 - [ ] Package it to automatically start the docker process
