@@ -78,6 +78,25 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 
 `source` for exports takes gitignore style patterns to exclude and include folders 
 
+## Shell Completion
+
+### Bash
+```bash
+# If installed via pip/pipx
+source /usr/local/share/bash-completion/completions/pramaana-completion.bash
+
+# If installed via system package manager
+source /usr/share/bash-completion/completions/pramaana-completion.bash
+```
+
+### Zsh
+The completion file is automatically installed in a standard location. Just add to your `~/.zshrc`:
+
+```zsh
+autoload -Uz compinit
+compinit
+```
+
 ## Development
 
 To set up a development environment:

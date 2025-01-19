@@ -23,3 +23,7 @@ pramaana = "pramaana.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pramaana"]
+
+[project.data-files]
+"bash-completion/completions" = ["completions/pramaana-completion.bash"]
+"zsh/site-functions" = ["completions/_pramaana"]  # Note: zsh completion files typically start with _
