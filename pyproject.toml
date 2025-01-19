@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pramaana"
+version = "0.1.0"
+description = "A minimalist command-line reference manager"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    { name = "Abhimanyu Pallavi Sudhir", email = "abhimanyupallavisudhir@gmail.com" }
+]
+dependencies = [
+    "requests>=2.28.0",
+    "bibtexparser>=1.4.0",
+]
+
+[project.scripts]
+pramaana = "pramaana.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pramaana"]
