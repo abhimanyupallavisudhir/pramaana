@@ -2,7 +2,7 @@
 
 A minimalist command-line reference manager that works with BibTeX files and the Zotero translation server.
 
-(basically everything was written by Claude)
+(basically everything was written by Claude -- under construction, nothing to install yet)
 
 ## Installation
 
