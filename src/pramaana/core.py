@@ -406,98 +406,170 @@ class Pramaana:
                     f"grep command failed: {str(e)}\n{traceback.format_exc()}"
                 )
 
-    def import_zotero(self, zotero_dir: str):
-        """Import references from Zotero data directory"""
+    def import_zotero(self, zotero_dir: str, linked_files_dir: str, port: int = 23119):
+        """Import references from Zotero with folder structure
+        
+        Args:
+            zotero_dir: Path to Zotero directory
+            linked_files_dir: Path to directory containing linked files (e.g. ~/gdrive/Gittable/Bib/zotmoov)
+        """
+        import sqlite3
+        import urllib.parse
+        import time
+
+        # First check if Zotero is running with Better BibTeX
+        try:
+            response = requests.get(f"http://localhost:{port}/better-bibtex/cayw?format=bibtex")
+            if response.status_code != 200:
+                raise PramaanaError(
+                    "Better BibTeX not responding. Please ensure Zotero is running "
+                    "and Better BibTeX is installed."
+                )
+        except requests.exceptions.ConnectionError:
+            raise PramaanaError(
+                "Could not connect to Zotero. Please ensure Zotero is running "
+                f"and accessible on port {port}"
+            )
+
         zotero_path = Path(os.path.expanduser(zotero_dir))
         if not zotero_path.exists():
             raise PramaanaError(f"Zotero directory not found: {zotero_dir}")
-
-        storage_dir = zotero_path / "storage"
-        if not storage_dir.exists():
-            raise PramaanaError("Storage directory not found in Zotero directory")
-
-        # Find all .bib files in the Zotero directory
-        for bib_file in zotero_path.rglob("*.bib"):
-            with open(bib_file) as f:
-                bibtex = f.read()
-
-            # Parse BibTeX to get a reasonable directory name
-            try:
-                bib_data = bibtexparser.loads(bibtex)
-                for entry in bib_data.entries:
-                    # Create directory name from author/year or title
-                    if "author" in entry and "year" in entry:
-                        first_author = entry["author"].split(" and ")[0].split(",")[0]
-                        dir_name = f"imported/{first_author.lower()}_{entry['year']}"
-                    else:
-                        dir_name = f"imported/{entry.get('ID', 'unknown')}"
-
-                    # Create reference
-                    try:
-                        self.new(dir_name, bibtex=bibtex)
-
-                        # Look for attachments
-                        if "file" in entry:
-                            files = entry["file"].split(";")
-                            for file_path in files:
-                                if file_path:
-                                    full_path = storage_dir / file_path
-                                    if full_path.exists():
-                                        self._handle_attachment(
-                                            self._get_reference_dir(dir_name),
-                                            str(full_path),
-                                        )
-
-                    except PramaanaError as e:
-                        print(
-                            f"Warning: Skipping {dir_name}: {str(e)}"
-                            f"\n{traceback.format_exc()}"
-                        )
-
-            except Exception as e:
-                print(
-                    f"Warning: Failed to parse {bib_file}: {str(e)}"
-                    f"\n{traceback.format_exc()}"
+            
+        linked_path = None
+        if linked_files_dir:
+            linked_path = Path(os.path.expanduser(linked_files_dir))
+            if not linked_path.exists():
+                raise PramaanaError(f"Linked files directory not found: {linked_files_dir}")
+        
+        def resolve_attachment_path(path: str) -> Optional[Path]:
+            """Resolve attachment path from Zotero database"""
+            if path.startswith('file://'):
+                # Remove file:// prefix and URL decode
+                file_path = urllib.parse.unquote(path[7:])
+                full_path = Path(file_path)
+                if full_path.exists():
+                    return full_path
+            elif path.startswith('attachments:'):
+                # Try to find in linked_files_dir if provided
+                if linked_path:
+                    rel_path = path.replace('attachments:', '')
+                    full_path = linked_path / rel_path
+                    if full_path.exists():
+                        return full_path
+            else:
+                # Try as absolute path
+                full_path = Path(path)
+                if full_path.exists():
+                    return full_path
+            return None
+                    
+        # Find and connect to Zotero's database
+        zotero_db = zotero_path / "zotero.sqlite"
+        if not zotero_db.exists():
+            raise PramaanaError("Zotero database not found")
+            
+        # Get items and collections from database
+        conn = sqlite3.connect(zotero_db)
+        cursor = conn.cursor()
+        
+        # Get all items with their collections and citation keys
+        cursor.execute("""
+            SELECT items.key, items.itemID, collections.collectionName, 
+                collectionTree.path, itemDataValues.value as citekey
+            FROM items
+            LEFT JOIN collectionItems ON items.itemID = collectionItems.itemID
+            LEFT JOIN collections ON collectionItems.collectionID = collections.collectionID
+            LEFT JOIN (
+                WITH RECURSIVE
+                collTree(collectionID, path) AS (
+                    SELECT collectionID, collectionName as path
+                    FROM collections
+                    WHERE parentCollectionID IS NULL
+                    UNION ALL
+                    SELECT c.collectionID, ct.path || '/' || c.collectionName
+                    FROM collections c
+                    JOIN collTree ct ON c.parentCollectionID = ct.collectionID
                 )
+                SELECT * FROM collTree
+            ) as collectionTree ON collections.collectionID = collectionTree.collectionID
+            LEFT JOIN itemData ON items.itemID = itemData.itemID
+            LEFT JOIN itemDataValues ON itemData.valueID = itemDataValues.valueID
+            WHERE items.itemTypeID = 2  -- assuming 2 is for regular items
+            AND itemData.fieldID = 1  -- assuming 1 is for citation key
+        """)
+        
+        items = cursor.fetchall()
+        
+        # Get attachments info
+        cursor.execute("""
+            SELECT items.key as parent_key, 
+                attachments.path as attachment_path
+            FROM items
+            JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID
+            JOIN items as attachments ON itemAttachments.itemID = attachments.itemID
+            WHERE items.itemTypeID = 2  -- regular items
+            AND attachments.itemTypeID = 14  -- attachments
+        """)
+        
+        attachments = cursor.fetchall()
+        attachment_map = {}
+        for parent_key, path in attachments:
+            if parent_key not in attachment_map:
+                attachment_map[parent_key] = []
+            attachment_map[parent_key].append(path)
+        
+        # Process each item
+        for key, item_id, coll_name, coll_path, citekey in items:
+            if not citekey or not coll_path:
                 continue
-
-    def list_refs(self, subdir: Optional[str] = None, ls_args: List[str] = None):
-        """List references in tree structure"""
-        base_dir = self.refs_dir
-        if subdir:
-            base_dir = self.refs_dir / subdir
-            if not base_dir.exists():
-                raise PramaanaError(f"Directory not found: {subdir}")
-
-        # If ls_args provided, use ls directly
-        if ls_args:
-            cmd = ["ls"] + ls_args + [str(base_dir)]
+            
+            # Create pramaana path
+            pram_path = coll_path.replace(' ', '_') + '/' + citekey
+            print(f"Processing: {pram_path}")
+            
+            # Get BibTeX for this item using Better BibTeX API
             try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                raise PramaanaError(f"ls command failed: {e}\n{traceback.format_exc()}")
-        else:
-            # Generate tree structure
-            tree_lines = []
-            prefix_base = "├── "
-            prefix_last = "└── "
-            prefix_indent = "│   "
-            prefix_indent_last = "    "
-
-            def add_to_tree(path: Path, prefix: str = ""):
-                items = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name))
-                for i, item in enumerate(items):
-                    is_last = i == len(items) - 1
-                    curr_prefix = prefix_last if is_last else prefix_base
-                    tree_lines.append(f"{prefix}{curr_prefix}{item.name}")
-                    if item.is_dir():
-                        new_prefix = prefix + (
-                            prefix_indent_last if is_last else prefix_indent
-                        )
-                        add_to_tree(item, new_prefix)
-
-            add_to_tree(base_dir)
-            return tree_lines
+                response = requests.post(
+                    f"http://localhost:{port}/better-bibtex/export/item",
+                    json={
+                        "id": key,
+                        "format": "bibtex",
+                        "exportNotes": False
+                    }
+                )
+                if response.status_code != 200:
+                    print(f"Warning: Failed to get BibTeX for {citekey}")
+                    continue
+                    
+                bibtex = response.text
+                
+                # Create reference
+                try:
+                    self.new(pram_path, bibtex=bibtex)
+                    
+                    # Handle attachments
+                    if key in attachment_map:
+                        for attach_path in attachment_map[key]:
+                            resolved_path = resolve_attachment_path(attach_path)
+                            if resolved_path:
+                                self._handle_attachment(
+                                    self._get_reference_dir(pram_path),
+                                    str(resolved_path)
+                                )
+                            else:
+                                print(f"Warning: Could not resolve attachment: {attach_path}")
+                                
+                except PramaanaError as e:
+                    print(f"Warning: Skipping {pram_path}: {str(e)}")
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"Warning: Failed to export {citekey}: {str(e)}")
+                continue
+                
+            # Small delay to avoid overwhelming the API
+            time.sleep(0.1)
+        
+        conn.close()
 
     def remove(self, path: str, rm_args: List[str] = None):
         """Remove a file or directory"""

@@ -34,11 +34,12 @@ def main():
     # import command
     import_parser = subparsers.add_parser('import', help='Import from Zotero')
     import_parser.add_argument('zotero_dir', help='Path to Zotero data directory')
-
+    import_parser.add_argument('linked_files_dir', help='Path to linked files directory (e.g. ~/gdrive/Gittable/Bib/zotmoov)')
+    import_parser.add_argument('--port', type=int, default=23119, help='Zotero/Better BibTeX port (default: 23119)')
+    
     # export command
     export_parser = subparsers.add_parser('export', help='Run configured exports')
     export_parser.add_argument('exports', nargs='*', help='Names of specific exports to run. If none provided, runs all exports.')
-
 
     # ls command
     ls_parser = subparsers.add_parser('ls', help='List references')
@@ -136,8 +137,9 @@ def main():
             pramaana.grep(args.pattern, args.paths, args.grep_args)
 
         elif args.command == 'import':
-            print(f"Importing from Zotero directory: {args.zotero_dir}")
-            pramaana.import_zotero(args.zotero_dir)
+                print(f"Importing from Zotero directory: {args.zotero_dir}")
+                print(f"Using linked files from: {args.linked_files_dir}")
+                pramaana.import_zotero(args.zotero_dir, args.linked_files_dir)
 
         elif args.command == 'export':
             if args.exports:
