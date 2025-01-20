@@ -32,11 +32,10 @@ def main():
                            help='Additional arguments for grep (e.g. -i for case-insensitive)')
     
     # import command
-    import_parser = subparsers.add_parser('import', help='Import from Zotero')
-    import_parser.add_argument('zotero_dir', help='Path to Zotero data directory')
-    import_parser.add_argument('linked_files_dir', help='Path to linked files directory (e.g. ~/gdrive/Gittable/Bib/zotmoov)')
-    import_parser.add_argument('--port', type=int, default=23119, help='Zotero/Better BibTeX port (default: 23119)')
-    
+    import_parser = subparsers.add_parser('import', help='Import from BetterBibTeX export')
+    import_parser.add_argument('bib_file', help='Path to BetterBibTeX export file')
+    import_parser.add_argument('--via', choices=['ln', 'cp', 'mv'], default='ln',
+                             help='How to handle attachments (default: ln)')
     # export command
     export_parser = subparsers.add_parser('export', help='Run configured exports')
     export_parser.add_argument('exports', nargs='*', help='Names of specific exports to run. If none provided, runs all exports.')
@@ -137,9 +136,8 @@ def main():
             pramaana.grep(args.pattern, args.paths, args.grep_args)
 
         elif args.command == 'import':
-                print(f"Importing from Zotero directory: {args.zotero_dir}")
-                print(f"Using linked files from: {args.linked_files_dir}")
-                pramaana.import_zotero(args.zotero_dir, args.linked_files_dir)
+                print(f"Importing from BetterBibTeX export: {args.bib_file}")
+                pramaana.import_zotero(args.bib_file, via=args.via)
 
         elif args.command == 'export':
             if args.exports:

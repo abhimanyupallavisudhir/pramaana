@@ -406,156 +406,74 @@ class Pramaana:
                     f"grep command failed: {str(e)}\n{traceback.format_exc()}"
                 )
 
-    def import_zotero(self, zotero_dir: str, linked_files_dir: Optional[str] = None):
-        """Import references from Zotero with folder structure"""
-        import sqlite3
-        import urllib.parse
-        import tempfile
-        import shutil
-        import json
+    def import_zotero(self, bib_file: str, via: str = 'ln'):
+        """Import references from BetterBibTeX export
         
-        zotero_path = Path(os.path.expanduser(zotero_dir))
-        if not zotero_path.exists():
-            raise PramaanaError(f"Zotero directory not found: {zotero_dir}")
+        Args:
+            bib_file: Path to the BetterBibTeX export file
+            via: How to handle attachments - 'ln' (hardlink), 'cp' (copy), or 'mv' (move)
+        """
+        if via not in ['ln', 'cp', 'mv']:
+            raise PramaanaError(f"Invalid --via option: {via}")
             
-        # Find Zotero's database
-        zotero_db = zotero_path / "zotero.sqlite"
-        if not zotero_db.exists():
-            raise PramaanaError("Zotero database not found")
-
-        # Create a temporary copy of the database
-        with tempfile.NamedTemporaryFile(suffix='.sqlite', delete=False) as temp_db:
-            shutil.copy2(zotero_db, temp_db.name)
-            print(f"Created temporary copy of Zotero database")
-            
+        bib_file = os.path.expanduser(bib_file)
+        if not os.path.exists(bib_file):
+            raise PramaanaError(f"BibTeX file not found: {bib_file}")
+        
+        # Parse BibTeX file
+        with open(bib_file) as f:
+            bib_data = bibtexparser.loads(f.read())
+        
+        for entry in bib_data.entries:
             try:
-                conn = sqlite3.connect(temp_db.name)
-                cursor = conn.cursor()
-                
-                # Get Better BibTeX citation keys and paths
-                cursor.execute("""
-                    WITH RECURSIVE
-                    CollectionPath(collectionID, path) AS (
-                        SELECT c.collectionID, c.collectionName
-                        FROM collections c
-                        WHERE parentCollectionID IS NULL
-                        UNION ALL
-                        SELECT c.collectionID, 
-                            cp.path || '/' || c.collectionName
-                        FROM collections c
-                        JOIN CollectionPath cp ON c.parentCollectionID = cp.collectionID
-                    )
-                    SELECT DISTINCT i.key, cp.path, i.itemID
-                    FROM items i
-                    JOIN collectionItems ci ON i.itemID = ci.itemID
-                    JOIN CollectionPath cp ON ci.collectionID = cp.collectionID
-                    WHERE i.itemTypeID = 2;
-                """)
-                
-                items = cursor.fetchall()
-                print(f"Found {len(items)} items in collections")
-                
-                # Get attachments
-                cursor.execute("""
-                    SELECT i.key as parent_key,
-                        ia.path as attachment_path,
-                        ia.linkMode,
-                        ia.contentType
-                    FROM items i
-                    JOIN itemAttachments ia ON i.itemID = ia.parentItemID
-                    WHERE i.itemTypeID = 2;
-                """)
-                
-                attachments = cursor.fetchall()
-                print(f"\nFound {len(attachments)} attachments")
-                
-                attachment_map = {}
-                for parent_key, path, link_mode, content_type in attachments:
-                    if parent_key not in attachment_map:
-                        attachment_map[parent_key] = []
-                    attachment_map[parent_key].append((path, link_mode, content_type))
-                
-                # Find Better BibTeX data directory
-                bbt_dir = zotero_path.parent / "better-bibtex"
-                if not bbt_dir.exists():
-                    raise PramaanaError("Better BibTeX data directory not found")
+                # Get collection path and citation key
+                collection = entry.get('collection', '').strip('/')  # Remove leading/trailing slashes
+                if not collection:
+                    collection = 'uncategorized'
+                citation_key = entry.get('ID')
+                if not citation_key:
+                    print(f"Warning: Entry has no citation key, skipping: {entry.get('title', 'Unknown')}")
+                    continue
                     
-                # Get citation keys from Better BibTeX cache
-                keys_file = bbt_dir / "cache" / "keys.json"
-                if not keys_file.exists():
-                    raise PramaanaError("Better BibTeX citation keys cache not found")
-                    
-                with open(keys_file) as f:
-                    citation_keys = json.load(f)
+                # Create directory for this reference
+                ref_dir = self.refs_dir / collection / citation_key
+                ref_dir.mkdir(parents=True, exist_ok=True)
                 
-                # Process each item
-                for key, collection_path, item_id in items:
-                    # Get citation key from Better BibTeX cache
-                    if key not in citation_keys:
-                        print(f"Warning: No citation key found for item {key}")
+                # Save BibTeX
+                with open(ref_dir / f"reference.{self.config['storage_format']}", 'w') as f:
+                    # Create a new database with just this entry
+                    db = bibtexparser.bibdatabase.BibDatabase()
+                    db.entries = [entry]
+                    f.write(bibtexparser.dumps(db))
+                
+                # Handle attachments
+                files = entry.get('file', '').split(';')
+                for file_path in files:
+                    if not file_path:
                         continue
                         
-                    citekey = citation_keys[key]
-                    
-                    # Create pramaana path
-                    pram_path = collection_path.replace(' ', '_') + '/' + citekey
-                    print(f"\nProcessing: {pram_path}")
-                    
-                    # Get BibTeX from Better BibTeX Export
-                    export_file = bbt_dir / "cache" / f"export/{key}.bibtex"
-                    if not export_file.exists():
-                        print(f"Warning: No BibTeX export found for {citekey}")
+                    file_path = os.path.expanduser(file_path)
+                    if not os.path.exists(file_path):
+                        print(f"Warning: Attachment not found: {file_path}")
                         continue
-                        
-                    with open(export_file) as f:
-                        bibtex = f.read()
                     
-                    try:
-                        # Create reference
-                        self.new(pram_path, bibtex=bibtex)
+                    dest = ref_dir / os.path.basename(file_path)
+                    if via == 'ln':
+                        try:
+                            os.link(file_path, dest)
+                        except OSError as e:
+                            print(f"Warning: Could not create hardlink for {file_path}: {e}")
+                            print("Falling back to copy...")
+                            shutil.copy2(file_path, dest)
+                    elif via == 'cp':
+                        shutil.copy2(file_path, dest)
+                    else:  # mv
+                        shutil.move(file_path, dest)
                         
-                        # Handle attachments
-                        if key in attachment_map:
-                            for attach_path, link_mode, content_type in attachment_map[key]:
-                                resolved_path = None
-                                
-                                if attach_path:
-                                    if link_mode == 2:  # Linked file
-                                        # Try absolute path first
-                                        if os.path.exists(attach_path):
-                                            resolved_path = attach_path
-                                        # Then try relative to linked_files_dir
-                                        elif linked_files_dir:
-                                            full_path = os.path.join(
-                                                os.path.expanduser(linked_files_dir),
-                                                attach_path
-                                            )
-                                            if os.path.exists(full_path):
-                                                resolved_path = full_path
-                                                
-                                    elif link_mode == 1:  # Stored file
-                                        storage_dir = zotero_path / "storage"
-                                        if storage_dir.exists():
-                                            full_path = storage_dir / attach_path
-                                            if full_path.exists():
-                                                resolved_path = str(full_path)
-                                
-                                if resolved_path:
-                                    print(f"Adding attachment: {resolved_path}")
-                                    self._handle_attachment(
-                                        self._get_reference_dir(pram_path),
-                                        resolved_path
-                                    )
-                                else:
-                                    print(f"Warning: Could not resolve attachment path: {attach_path}")
-                                    
-                    except PramaanaError as e:
-                        print(f"Warning: Skipping {pram_path}: {str(e)}")
-                        
-            finally:
-                conn.close()
-                os.unlink(temp_db.name)
-                print("\nCleaned up temporary database")
+                print(f"Imported: {collection}/{citation_key}")
+                
+            except Exception as e:
+                print(f"Warning: Failed to import entry {entry.get('ID', 'Unknown')}: {str(e)}")
 
     def list_refs(self, subdir: Optional[str] = None, ls_args: List[str] = None):
         """List references in tree structure"""
