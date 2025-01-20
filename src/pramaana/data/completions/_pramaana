@@ -36,6 +36,10 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
                 ls|rm|trash|show|open|edit|grep|mv|cp|ln)
                     _path_files -W $data_dir
                     ;;
+                import)
+                    # Complete only .bib files
+                    _files -g "*.bib"
+                    ;;
                 export)
                     local -a exports
                     exports=( ${(f)"$(python3 -c '

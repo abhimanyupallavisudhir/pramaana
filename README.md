@@ -4,7 +4,7 @@ The great thing about Zotero is its actively-maintained translation server (i.e.
 
 `pramaana` is a minimalist command-line reference manager that works with BibTeX files and the Zotero translation server. Basically works like Zotero with BetterBibTeX plus Zotmoov (or the earlier Zotfile).
 
-In theory this is the perfect and optimal reference manager. Unfortunately it turns out the published Zotero Translation Server module doesn't work as well as what Zotero actually uses. Hopefully that's one day fixed, and then this will really be great.
+In theory this is the perfect and optimal reference manager. Unfortunately it turns out [the published Zotero Translation Server module doesn't work as well as what Zotero actually uses](https://github.com/zotero/translation-server/issues/179). Hopefully that's one day fixed, and then this will really be great.
 
 ## Installation
 
@@ -177,10 +177,8 @@ pip install -e ".[dev]"
 - [x] `pramaana export id` to run only some exports
 - [x] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
 - [x] make things work nicely with autocomplete, zsh etc.
--
-
-- [ ] Make sure importing from Zotero works
-- [ ] Make sure translation server works for our needs
+- [x] Make sure importing from Zotero works
+- [ ] [Make sure translation server works for our needs](https://github.com/zotero/translation-server/issues/179)
 
 WONTFIX:
 - [x] ~~Make find command work within folders~~ changed to grep

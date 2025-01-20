@@ -29,6 +29,10 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
             local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
             COMPREPLY=( $(printf "%s\n" "${paths}") )
             ;;
+        import)
+            # Complete only .bib files
+            COMPREPLY=( $(compgen -f -X '!*.bib' -- "${cur}") )
+            ;;
         export)
             # If no args yet, complete with export names from config
             if [ $COMP_CWORD -eq 2 ]; then
