@@ -62,7 +62,7 @@ pramaana mv path1 path2
 pramaana cp path1 path2
 pramaana ln path1 path2 -s
 pramaana show cs/ai_books/sutton_barto/ # shows bibliographic content
-pramaana open # or pramana open /path/to/file/or/subdir, opens file or directory in default application
+pramaana open /path/to/file/or/subdir # opens file or directory in default application; omit arguments to just open the `pramaana_path` folder
 ```
 
 ## Configuration
@@ -177,8 +177,12 @@ pip install -e ".[dev]"
 - [x] `pramaana export id` to run only some exports
 - [x] `pramaana ls`, `pramaana rm`, `pramaana trash`, `pramaana show`, `pramaana open`
 - [x] make things work nicely with autocomplete, zsh etc.
-- ~~[ ] remove the csl option we don't want it~~ WONTFIX
-- [x] ~~Make find command work within folders~~ changed to grep
+-
+
 - [ ] Make sure importing from Zotero works
 - [ ] Make sure translation server works for our needs
-~~- [ ] Package it to automatically start the docker process~~ WONTFIX
+
+WONTFIX:
+- [x] ~~Make find command work within folders~~ changed to grep
+- [ ] ~~Package it to automatically start the docker process~~
+- [ ] ~~remove the `storage_format` option we don't want it~~
