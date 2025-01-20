@@ -5,8 +5,8 @@ import shutil
 from pathlib import Path
 import tempfile
 import traceback
-import requests
 from typing import Optional, Dict, Any, List
+import requests
 import bibtexparser
 import pathspec
 
@@ -413,6 +413,7 @@ class Pramaana:
             bib_file: Path to the BetterBibTeX export file
             via: How to handle attachments - 'ln' (hardlink), 'cp' (copy), or 'mv' (move)
         """
+        import re
         if via not in ['ln', 'cp', 'mv']:
             raise PramaanaError(f"Invalid --via option: {via}")
             
@@ -428,6 +429,8 @@ class Pramaana:
             try:
                 # Get collection path and citation key
                 collection = entry.get('collection', '').strip('/')  # Remove leading/trailing slashes
+                # Remove any BibTeX escaping (backslash followed by any character)
+                collection = re.sub(r'\\(.)', r'\1', collection)
                 if not collection:
                     collection = 'uncategorized'
                 citation_key = entry.get('ID')
