@@ -52,7 +52,7 @@ pramaana grep "sutton" cs/ --include="*.bib" # to only search .bib files (rather
 pramaana import /path/to/special_bbt_export.bib
 ```
 
-Basic commands (all of these support the basic options supported by the commands they wrap, e.g. `rm -rf`):
+Basic commands (all of these support the basic options supported by the commands they wrap, e.g. `rm -rf`, but the options need to be added at the *end*):
 
 ```bash
 pramaana ls # or pramaana ls /path/to/subdir

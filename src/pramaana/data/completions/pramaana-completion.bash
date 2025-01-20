@@ -30,8 +30,12 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
             COMPREPLY=( $(printf "%s\n" "${paths}") )
             ;;
         import)
-            # Complete only .bib files
-            COMPREPLY=( $(compgen -f -X '!*.bib' -- "${cur}") )
+            if [ "$prev" = "--via" ]; then
+                COMPREPLY=( $(compgen -W "ln cp mv" -- ${cur}) )
+            else
+                # Complete only .bib files
+                COMPREPLY=( $(compgen -f -X '!*.bib' -- "${cur}") )
+            fi
             ;;
         export)
             # If no args yet, complete with export names from config

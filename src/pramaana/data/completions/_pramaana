@@ -37,8 +37,14 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
                     _path_files -W $data_dir
                     ;;
                 import)
-                    # Complete only .bib files
-                    _files -g "*.bib"
+                    case $words[(($CURRENT - 1))] in
+                        --via)
+                            _values 'via' 'ln' 'cp' 'mv'
+                            ;;
+                        *)
+                            _files -g "*.bib"
+                            ;;
+                    esac
                     ;;
                 export)
                     local -a exports
