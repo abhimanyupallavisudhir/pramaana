@@ -562,6 +562,44 @@ class Pramaana:
                 os.unlink(temp_db.name)
                 print("\nCleaned up temporary database")
 
+    def list_refs(self, subdir: Optional[str] = None, ls_args: List[str] = None):
+        """List references in tree structure"""
+        base_dir = self.refs_dir
+        if subdir:
+            base_dir = self.refs_dir / subdir
+            if not base_dir.exists():
+                raise PramaanaError(f"Directory not found: {subdir}")
+
+        # If ls_args provided, use ls directly
+        if ls_args:
+            cmd = ["ls"] + ls_args + [str(base_dir)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"ls command failed: {e}\n{traceback.format_exc()}")
+        else:
+            # Generate tree structure
+            tree_lines = []
+            prefix_base = "├── "
+            prefix_last = "└── "
+            prefix_indent = "│   "
+            prefix_indent_last = "    "
+
+            def add_to_tree(path: Path, prefix: str = ""):
+                items = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name))
+                for i, item in enumerate(items):
+                    is_last = i == len(items) - 1
+                    curr_prefix = prefix_last if is_last else prefix_base
+                    tree_lines.append(f"{prefix}{curr_prefix}{item.name}")
+                    if item.is_dir():
+                        new_prefix = prefix + (
+                            prefix_indent_last if is_last else prefix_indent
+                        )
+                        add_to_tree(item, new_prefix)
+
+            add_to_tree(base_dir)
+            return tree_lines
+
     def remove(self, path: str, rm_args: List[str] = None):
         """Remove a file or directory"""
         full_path = self.refs_dir / path
