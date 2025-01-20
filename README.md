@@ -70,7 +70,7 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 
 ```python
 {
-    "storage_format": "bib",  # or "csl"
+    "storage_format": "bib",  # only bib is supported for now
     "attachment_mode": "cp",  # cp, mv, or ln
     "attachment_watch_dir": "~/Downloads",
     "pramaana_path": "~/.pramaana_data",  # default location for references

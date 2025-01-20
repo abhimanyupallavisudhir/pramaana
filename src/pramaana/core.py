@@ -2,13 +2,12 @@ import os
 import json
 import subprocess
 import shutil
-import shlex
 from pathlib import Path
 import tempfile
+import traceback
 import requests
 from typing import Optional, Dict, Any, List
 import bibtexparser
-from datetime import datetime
 import pathspec
 
 DEFAULT_CONFIG = {
@@ -16,7 +15,7 @@ DEFAULT_CONFIG = {
     "attachment_mode": "cp",
     "attachment_watch_dir": "~/Downloads",
     "pramaana_path": "~/.pramaana_data",
-    "translation_server": "http://localhost:1969",  
+    "translation_server": "http://localhost:1969",
     "exports": {
         "everything": {
             "source": ["/.exports/*"],
@@ -24,6 +23,7 @@ DEFAULT_CONFIG = {
         }
     },
 }
+
 
 class PramaanaError(Exception):
     pass
@@ -43,15 +43,21 @@ class Pramaana:
         """Check if translation server is running"""
         try:
             response = requests.get(
-                f"{self.config['translation_server']}/web",
-                timeout=5
+                f"{self.config['translation_server']}/web", timeout=5
             )
-            if response.status_code not in (400, 200):  # 400 is ok, means it wants input
-                raise PramaanaError(f"Translation server returned unexpected status: {response.status_code}")
+            if response.status_code not in (
+                400,
+                200,
+            ):  # 400 is ok, means it wants input
+                raise PramaanaError(
+                    f"Translation server returned unexpected status: {response.status_code}"
+                )
         except requests.exceptions.RequestException as e:
             raise PramaanaError(
                 f"Cannot connect to translation server at {self.config['translation_server']}. "
                 "Make sure it's running with: docker run -d -p 1969:1969 zotero/translation-server"
+                f"{e}"
+                f"\n{traceback.format_exc()}"
             )
 
     def _load_config(self) -> Dict[str, Any]:
@@ -77,68 +83,71 @@ class Pramaana:
         return self.refs_dir / ref_path
 
     def _fetch_from_url(self, url: str) -> Dict[str, Any]:
-            """Fetch metadata from URL using Zotero translation server"""
-            # Define headers that mimic a real browser + identify our tool
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 pramaana/0.1.0 (https://github.com/yourusername/pramaana)',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Connection': 'keep-alive',
-            }
+        """Fetch metadata from URL using Zotero translation server"""
+        # Define headers that mimic a real browser + identify our tool
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 pramaana/0.1.0 (https://github.com/yourusername/pramaana)",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+        }
 
-            try:
-                # First request to get metadata
-                response = requests.post(
-                    f"{self.config["translation_server"]}/web",
-                    data=url,
-                    headers={'Content-Type': 'text/plain', **headers},
-                    timeout=30  # Add timeout
-                )
-                
-                if response.status_code == 500:
-                    # Try to get more detailed error from response
-                    try:
-                        error_details = response.json()
-                        raise PramaanaError(f"Translation server error: {error_details}")
-                    except:
-                        raise PramaanaError(f"Translation server error (500) for URL: {url}")
-                
-                if response.status_code == 300:
-                    # Multiple choices, select first one
-                    data = response.json()
-                    first_key = list(data["items"].keys())[0]
-                    selected_items = {first_key: data["items"][first_key]}
-                    data["items"] = selected_items
-                    
-                    # Make second request with selection
-                    response = requests.post(
-                        f"{self.config["translation_server"]}/web",
-                        json=data,
-                        headers={'Content-Type': 'application/json', **headers},
-                        timeout=30
+        try:
+            # First request to get metadata
+            response = requests.post(
+                f"{self.config['translation_server']}/web",
+                data=url,
+                headers={"Content-Type": "text/plain", **headers},
+                timeout=30,  # Add timeout
+            )
+
+            if response.status_code == 500:
+                # Try to get more detailed error from response
+                try:
+                    error_details = response.json()
+                    raise PramaanaError(f"Translation server error: {error_details}")
+                except Exception as e:
+                    raise PramaanaError(
+                        f"Translation server error (500) for URL: {url}, {str(e)}"
+                        f"\n{traceback.format_exc()}"
                     )
-                
-                if response.status_code != 200:
-                    raise PramaanaError(f"Translation server error: {response.status_code}")
-                    
-                # Convert to BibTeX
-                items = response.json()
-                export_response = requests.post(
-                    f"{self.config["translation_server"]}/export?format=bibtex",
-                    json=items,
-                    headers={'Content-Type': 'application/json', **headers},
-                    timeout=30
+
+            if response.status_code == 300:
+                # Multiple choices, select first one
+                data = response.json()
+                first_key = list(data["items"].keys())[0]
+                selected_items = {first_key: data["items"][first_key]}
+                data["items"] = selected_items
+
+                # Make second request with selection
+                response = requests.post(
+                    f"{self.config['translation_server']}/web",
+                    json=data,
+                    headers={"Content-Type": "application/json", **headers},
+                    timeout=30,
                 )
-                
-                if export_response.status_code != 200:
-                    raise PramaanaError("Failed to convert to BibTeX")
-                    
-                return {"bibtex": export_response.text, "raw": items}
-                
-            except requests.exceptions.Timeout:
-                raise PramaanaError(f"Timeout while fetching metadata from {url}")
-            except requests.exceptions.RequestException as e:
-                raise PramaanaError(f"Network error: {str(e)}")
+
+            if response.status_code != 200:
+                raise PramaanaError(f"Translation server error: {response.status_code}")
+
+            # Convert to BibTeX
+            items = response.json()
+            export_response = requests.post(
+                f"{self.config['translation_server']}/export?format=bibtex",
+                json=items,
+                headers={"Content-Type": "application/json", **headers},
+                timeout=30,
+            )
+
+            if export_response.status_code != 200:
+                raise PramaanaError("Failed to convert to BibTeX")
+
+            return {"bibtex": export_response.text, "raw": items}
+
+        except requests.exceptions.Timeout:
+            raise PramaanaError(f"Timeout while fetching metadata from {url}")
+        except requests.exceptions.RequestException as e:
+            raise PramaanaError(f"Network error: {str(e)}\n{traceback.format_exc()}")
 
     def _handle_attachment(self, ref_dir: Path, attachment_path: Optional[str]):
         """Handle attachment based on configuration
@@ -227,18 +236,16 @@ class Pramaana:
         # Process exports
         self.export()
 
-
     def _process_export(self, name: str, export: dict):
         """Process a single export configuration"""
-        dest_path = os.path.expanduser(export['destination'])
+        dest_path = os.path.expanduser(export["destination"])
         print(f"Writing to: {dest_path}")
-        
+
         # Create pathspec from gitignore-style patterns
         spec = pathspec.PathSpec.from_lines(
-            pathspec.patterns.GitWildMatchPattern,
-            export['source']
+            pathspec.patterns.GitWildMatchPattern, export["source"]
         )
-        
+
         # Collect all references that match the patterns
         all_refs = []
         for bib_file in self.refs_dir.rglob(f"*.{self.config['storage_format']}"):
@@ -251,37 +258,39 @@ class Pramaana:
                         all_refs.append(content)
             else:
                 print(f"Excluding file: {bib_file}")
-        
+
         print(f"Writing {len(all_refs)} references to {dest_path}")
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-        with open(dest_path, 'w', encoding='utf-8') as f:
-            content = '\n\n'.join(all_refs)
+        with open(dest_path, "w", encoding="utf-8") as f:
+            content = "\n\n".join(all_refs)
             if content:
-                content += '\n'
+                content += "\n"
             f.write(content)
 
     def export(self, export_names: Optional[List[str]] = None):
         """Run export processing manually
-        
+
         Args:
             export_names: Optional list of export names to run. If None, runs all exports.
         """
-        if not self.config['exports']:
+        if not self.config["exports"]:
             raise PramaanaError("No exports configured in config file")
-            
+
         # If no names provided, run all exports
         if export_names is None:
-            export_names = list(self.config['exports'].keys())
-            
+            export_names = list(self.config["exports"].keys())
+
         # Validate export names
-        invalid_names = [name for name in export_names if name not in self.config['exports']]
+        invalid_names = [
+            name for name in export_names if name not in self.config["exports"]
+        ]
         if invalid_names:
             raise PramaanaError(f"Unknown export(s): {', '.join(invalid_names)}")
-            
+
         # Run selected exports
         for name in export_names:
             print(f"Processing export '{name}'...")
-            export = self.config['exports'][name]
+            export = self.config["exports"][name]
             self._process_export(name, export)
 
     def edit(
@@ -348,19 +357,24 @@ class Pramaana:
 
         return results
 
-    def grep(self, pattern: str, paths: Optional[List[str]] = None, grep_args: List[str] = None):
+    def grep(
+        self,
+        pattern: str,
+        paths: Optional[List[str]] = None,
+        grep_args: List[str] = None,
+    ):
         """Search references using grep
-        
+
         Args:
             pattern: Search pattern
             paths: Optional list of paths to search in (relative to refs_dir)
             grep_args: Additional arguments to pass to grep
         """
         # Build grep command
-        cmd = ['grep'] + (grep_args or [])
+        cmd = ["grep"] + (grep_args or [])
         # Add pattern
         cmd.append(pattern)
-        
+
         # Handle search paths
         if paths:
             search_paths = []
@@ -368,23 +382,29 @@ class Pramaana:
                 search_dir = self.refs_dir / path
                 if not search_dir.exists():
                     raise PramaanaError(f"Path not found: {path}")
-                search_paths.extend(search_dir.rglob(f"*.{self.config['storage_format']}"))
+                search_paths.extend(
+                    search_dir.rglob(f"*.{self.config['storage_format']}")
+                )
         else:
             search_paths = self.refs_dir.rglob(f"*.{self.config['storage_format']}")
-        
+
         # Add files to search
         file_list = [str(f) for f in search_paths]
         if not file_list:
             print("No files to search")
             return
-        
+
         cmd.extend(file_list)
-        
+
         try:
-            subprocess.run(cmd, check=False)  # Don't check=True as grep returns 1 if no matches
+            subprocess.run(
+                cmd, check=False
+            )  # Don't check=True as grep returns 1 if no matches
         except subprocess.CalledProcessError as e:
             if e.returncode != 1:  # 1 means no matches, which is fine
-                raise PramaanaError(f"grep command failed: {e}")
+                raise PramaanaError(
+                    f"grep command failed: {str(e)}\n{traceback.format_exc()}"
+                )
 
     def import_zotero(self, zotero_dir: str):
         """Import references from Zotero data directory"""
@@ -429,10 +449,16 @@ class Pramaana:
                                         )
 
                     except PramaanaError as e:
-                        print(f"Warning: Skipping {dir_name}: {str(e)}")
+                        print(
+                            f"Warning: Skipping {dir_name}: {str(e)}"
+                            f"\n{traceback.format_exc()}"
+                        )
 
             except Exception as e:
-                print(f"Warning: Failed to parse {bib_file}: {str(e)}")
+                print(
+                    f"Warning: Failed to parse {bib_file}: {str(e)}"
+                    f"\n{traceback.format_exc()}"
+                )
                 continue
 
     def list_refs(self, subdir: Optional[str] = None, ls_args: List[str] = None):
@@ -443,14 +469,13 @@ class Pramaana:
             if not base_dir.exists():
                 raise PramaanaError(f"Directory not found: {subdir}")
 
-    
         # If ls_args provided, use ls directly
         if ls_args:
-            cmd = ['ls'] + ls_args + [str(base_dir)]
+            cmd = ["ls"] + ls_args + [str(base_dir)]
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                raise PramaanaError(f"ls command failed: {e}")
+                raise PramaanaError(f"ls command failed: {e}\n{traceback.format_exc()}")
         else:
             # Generate tree structure
             tree_lines = []
@@ -458,7 +483,7 @@ class Pramaana:
             prefix_last = "└── "
             prefix_indent = "│   "
             prefix_indent_last = "    "
-            
+
             def add_to_tree(path: Path, prefix: str = ""):
                 items = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name))
                 for i, item in enumerate(items):
@@ -466,30 +491,32 @@ class Pramaana:
                     curr_prefix = prefix_last if is_last else prefix_base
                     tree_lines.append(f"{prefix}{curr_prefix}{item.name}")
                     if item.is_dir():
-                        new_prefix = prefix + (prefix_indent_last if is_last else prefix_indent)
+                        new_prefix = prefix + (
+                            prefix_indent_last if is_last else prefix_indent
+                        )
                         add_to_tree(item, new_prefix)
-            
+
             add_to_tree(base_dir)
             return tree_lines
 
-    def remove(self, path: str,  rm_args: List[str] = None):
+    def remove(self, path: str, rm_args: List[str] = None):
         """Remove a file or directory"""
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
 
         if rm_args:
-            cmd = ['rm'] + rm_args + [str(full_path)]
+            cmd = ["rm"] + rm_args + [str(full_path)]
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                raise PramaanaError(f"rm command failed: {e}")
-        else:        
+                raise PramaanaError(f"rm command failed: {e}\n{traceback.format_exc()}")
+        else:
             if full_path.is_file():
                 full_path.unlink()
             else:
                 shutil.rmtree(full_path)
-        
+
         self.export()
 
     def trash(self, path: str, trash_args: List[str] = None):
@@ -497,18 +524,20 @@ class Pramaana:
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
-        
+
         # Check if trash-cli is installed
         try:
-            subprocess.run(['trash', '--version'], capture_output=True, check=True)
+            subprocess.run(["trash", "--version"], capture_output=True, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
-            raise PramaanaError("trash-cli not found. Please install it with: sudo apt-get install trash-cli")
-        
-        cmd = ['trash'] + (trash_args or []) + [str(full_path)]
+            raise PramaanaError(
+                "trash-cli not found. Please install it with: sudo apt-get install trash-cli"
+            )
+
+        cmd = ["trash"] + (trash_args or []) + [str(full_path)]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise PramaanaError(f"Failed to trash {path}: {result.stderr}")
-        
+
         self.export()
 
     def show(self, path: str, show_args: List[str] = None):
@@ -516,7 +545,7 @@ class Pramaana:
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
-        
+
         if full_path.is_file():
             target = full_path
         else:
@@ -525,20 +554,22 @@ class Pramaana:
             if not bib_files:
                 raise PramaanaError(f"No bibliography file found in {path}")
             target = bib_files[0]
-        
+
         if show_args:
-            cmd = ['cat'] + show_args + [str(target)]
+            cmd = ["cat"] + show_args + [str(target)]
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                raise PramaanaError(f"cat command failed: {e}")
+                raise PramaanaError(
+                    f"cat command failed: {e}\n{traceback.format_exc()}"
+                )
         else:
             with open(target) as f:
                 return f.read()
 
     def open(self, path: Optional[str] = None, open_args: List[str] = None):
         """Open with optional xdg-open arguments
-        
+
         Args:
             path: Optional path to open. If None, opens the root references directory.
             open_args: Additional arguments for xdg-open
@@ -549,31 +580,33 @@ class Pramaana:
                 raise PramaanaError(f"Path not found: {path}")
         else:
             full_path = self.refs_dir
-            
-        cmd = ['xdg-open'] + (open_args or []) + [str(full_path)]
+
+        cmd = ["xdg-open"] + (open_args or []) + [str(full_path)]
         try:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
-            raise PramaanaError(f"Failed to open {full_path}: {e}")
+            raise PramaanaError(
+                f"Failed to open {full_path}: {e}\n{traceback.format_exc()}"
+            )
 
     def move(self, source: str, dest: str, mv_args: List[str] = None):
         """Move a file or directory with optional mv arguments"""
         src_path = self.refs_dir / source
         dest_path = self.refs_dir / dest
-        
+
         if not src_path.exists():
             raise PramaanaError(f"Source not found: {source}")
-            
+
         if mv_args:
-            cmd = ['mv'] + mv_args + [str(src_path), str(dest_path)]
+            cmd = ["mv"] + mv_args + [str(src_path), str(dest_path)]
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                raise PramaanaError(f"mv command failed: {e}")
+                raise PramaanaError(f"mv command failed: {e}\n{traceback.format_exc()}")
         else:
             os.makedirs(dest_path.parent, exist_ok=True)
             shutil.move(str(src_path), str(dest_path))
-        
+
         # Process exports after moving
         self.export()
 
@@ -581,23 +614,23 @@ class Pramaana:
         """Copy a file or directory with optional cp arguments"""
         src_path = self.refs_dir / source
         dest_path = self.refs_dir / dest
-        
+
         if not src_path.exists():
             raise PramaanaError(f"Source not found: {source}")
-            
+
         if cp_args:
-            cmd = ['cp'] + cp_args + [str(src_path), str(dest_path)]
+            cmd = ["cp"] + cp_args + [str(src_path), str(dest_path)]
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                raise PramaanaError(f"cp command failed: {e}")
+                raise PramaanaError(f"cp command failed: {e}\n{traceback.format_exc()}")
         else:
             os.makedirs(dest_path.parent, exist_ok=True)
             if src_path.is_dir():
                 shutil.copytree(str(src_path), str(dest_path))
             else:
                 shutil.copy2(str(src_path), str(dest_path))
-        
+
         # Process exports after copying
         self.export()
 
@@ -605,12 +638,12 @@ class Pramaana:
         """Create a link with optional ln arguments"""
         src_path = self.refs_dir / source
         dest_path = self.refs_dir / dest
-        
+
         if not src_path.exists():
             raise PramaanaError(f"Source not found: {source}")
-            
+
         if ln_args:
-            cmd = ['ln'] + ln_args + [str(src_path), str(dest_path)]
+            cmd = ["ln"] + ln_args + [str(src_path), str(dest_path)]
             try:
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
@@ -618,6 +651,6 @@ class Pramaana:
         else:
             os.makedirs(dest_path.parent, exist_ok=True)
             os.link(str(src_path), str(dest_path))
-        
+
         # Process exports after linking
         self.export()
