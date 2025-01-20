@@ -48,7 +48,8 @@ pramaana grep "sutton" cs/ # supports all grep options, but must be given at end
 pramaana grep "sutton" cs/ --include="*.bib" # to only search .bib files (rather than e.g. pdf)
 
 # Import from Zotero:
-pramaana import /path/to/zotero_dir
+# NOTE: see below for how to export your Zotero library in a way that can be imported into Pramana
+pramaana import /path/to/special_bbt_export.bib
 ```
 
 Basic commands (all of these support the basic options supported by the commands they wrap, e.g. `rm -rf`):
@@ -118,6 +119,44 @@ compinit
 ```
 
 This does add like half a second to zsh startup time though (bash seems fine).
+
+## Importing your references
+
+To import from Zotero (or elsewhere), we will need a special kind of .bib export which, for each bib entry, contains the following fields:
+- `file = {/path/to/attachment.pdf;/path/to/other_attachment.html}`
+- `collection = {/collection/subcollection/subsubcollection}`
+
+To get this with Zotero you can use the [BetterBibTeX](https://github.com/retorquere/zotero-better-bibtex) plugin with some special settings.
+
+1) download [here](https://github.com/retorquere/zotero-better-bibtex/releases/latest) then in zotero "install plugin from file"
+
+2) then in the plugin settings for BetterBibTeX, add this postscript:
+
+```javascript
+if (Translator.BetterTeX && zotero.collections) {
+function path(key) {
+    const coll = Translator.collections[key]
+    if (!coll) return ''
+    return `${path(coll.parent)}/${coll.name}`
+}
+
+zotero.collections.forEach((key, i) => {
+    tex.add({ name: `collection${i > 0 ? i : ''}`, value: path(key) })
+})
+}
+```
+
+3. set this citation key formula in the BBT plugin settings: `(auth.lower + shorttitle(3,3) + year).replace("@", "")` (I think this is necessary, not sure what the default is)
+
+4. Select `My Library` in Zotero, then `File -> Export Library...`, select `Format: BetterBibTeX`, leave everything unchecked except maybe `worker`, press `OK`.
+
+5. Save the bib file, then import it as
+
+```bash
+pramaana import /path/to/special_bbt_import.bib [--via ln|cp|mv]
+```
+
+`--via` determines how the attachments are copied over -- they can be hardlinked, copied, or moved. Default is `ln`, which is instant like `mv` as it does not require data to be duplicated, but like `cp` retains the original files untouched (you can still delete the original files safely, as deletion just unlinks the pointers from the data.)
 
 ## Development
 
