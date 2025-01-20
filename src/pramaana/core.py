@@ -406,170 +406,161 @@ class Pramaana:
                     f"grep command failed: {str(e)}\n{traceback.format_exc()}"
                 )
 
-    def import_zotero(self, zotero_dir: str, linked_files_dir: str, port: int = 23119):
-        """Import references from Zotero with folder structure
-        
-        Args:
-            zotero_dir: Path to Zotero directory
-            linked_files_dir: Path to directory containing linked files (e.g. ~/gdrive/Gittable/Bib/zotmoov)
-        """
+    def import_zotero(self, zotero_dir: str, linked_files_dir: Optional[str] = None):
+        """Import references from Zotero with folder structure"""
         import sqlite3
         import urllib.parse
-        import time
-
-        # First check if Zotero is running with Better BibTeX
-        try:
-            response = requests.get(f"http://localhost:{port}/better-bibtex/cayw?format=bibtex")
-            if response.status_code != 200:
-                raise PramaanaError(
-                    "Better BibTeX not responding. Please ensure Zotero is running "
-                    "and Better BibTeX is installed."
-                )
-        except requests.exceptions.ConnectionError:
-            raise PramaanaError(
-                "Could not connect to Zotero. Please ensure Zotero is running "
-                f"and accessible on port {port}"
-            )
-
+        import tempfile
+        import shutil
+        
         zotero_path = Path(os.path.expanduser(zotero_dir))
         if not zotero_path.exists():
             raise PramaanaError(f"Zotero directory not found: {zotero_dir}")
             
-        linked_path = None
-        if linked_files_dir:
-            linked_path = Path(os.path.expanduser(linked_files_dir))
-            if not linked_path.exists():
-                raise PramaanaError(f"Linked files directory not found: {linked_files_dir}")
-        
-        def resolve_attachment_path(path: str) -> Optional[Path]:
-            """Resolve attachment path from Zotero database"""
-            if path.startswith('file://'):
-                # Remove file:// prefix and URL decode
-                file_path = urllib.parse.unquote(path[7:])
-                full_path = Path(file_path)
-                if full_path.exists():
-                    return full_path
-            elif path.startswith('attachments:'):
-                # Try to find in linked_files_dir if provided
-                if linked_path:
-                    rel_path = path.replace('attachments:', '')
-                    full_path = linked_path / rel_path
-                    if full_path.exists():
-                        return full_path
-            else:
-                # Try as absolute path
-                full_path = Path(path)
-                if full_path.exists():
-                    return full_path
-            return None
-                    
-        # Find and connect to Zotero's database
+        # Find Zotero's database
         zotero_db = zotero_path / "zotero.sqlite"
         if not zotero_db.exists():
             raise PramaanaError("Zotero database not found")
+
+        # Create a temporary copy of the database
+        with tempfile.NamedTemporaryFile(suffix='.sqlite', delete=False) as temp_db:
+            shutil.copy2(zotero_db, temp_db.name)
+            print(f"Created temporary copy of Zotero database")
             
-        # Get items and collections from database
-        conn = sqlite3.connect(zotero_db)
-        cursor = conn.cursor()
-        
-        # Get all items with their collections and citation keys
-        cursor.execute("""
-            SELECT items.key, items.itemID, collections.collectionName, 
-                collectionTree.path, itemDataValues.value as citekey
-            FROM items
-            LEFT JOIN collectionItems ON items.itemID = collectionItems.itemID
-            LEFT JOIN collections ON collectionItems.collectionID = collections.collectionID
-            LEFT JOIN (
-                WITH RECURSIVE
-                collTree(collectionID, path) AS (
-                    SELECT collectionID, collectionName as path
-                    FROM collections
-                    WHERE parentCollectionID IS NULL
-                    UNION ALL
-                    SELECT c.collectionID, ct.path || '/' || c.collectionName
-                    FROM collections c
-                    JOIN collTree ct ON c.parentCollectionID = ct.collectionID
-                )
-                SELECT * FROM collTree
-            ) as collectionTree ON collections.collectionID = collectionTree.collectionID
-            LEFT JOIN itemData ON items.itemID = itemData.itemID
-            LEFT JOIN itemDataValues ON itemData.valueID = itemDataValues.valueID
-            WHERE items.itemTypeID = 2  -- assuming 2 is for regular items
-            AND itemData.fieldID = 1  -- assuming 1 is for citation key
-        """)
-        
-        items = cursor.fetchall()
-        
-        # Get attachments info
-        cursor.execute("""
-            SELECT items.key as parent_key, 
-                attachments.path as attachment_path
-            FROM items
-            JOIN itemAttachments ON items.itemID = itemAttachments.parentItemID
-            JOIN items as attachments ON itemAttachments.itemID = attachments.itemID
-            WHERE items.itemTypeID = 2  -- regular items
-            AND attachments.itemTypeID = 14  -- attachments
-        """)
-        
-        attachments = cursor.fetchall()
-        attachment_map = {}
-        for parent_key, path in attachments:
-            if parent_key not in attachment_map:
-                attachment_map[parent_key] = []
-            attachment_map[parent_key].append(path)
-        
-        # Process each item
-        for key, item_id, coll_name, coll_path, citekey in items:
-            if not citekey or not coll_path:
-                continue
-            
-            # Create pramaana path
-            pram_path = coll_path.replace(' ', '_') + '/' + citekey
-            print(f"Processing: {pram_path}")
-            
-            # Get BibTeX for this item using Better BibTeX API
             try:
-                response = requests.post(
-                    f"http://localhost:{port}/better-bibtex/export/item",
-                    json={
-                        "id": key,
-                        "format": "bibtex",
-                        "exportNotes": False
-                    }
-                )
-                if response.status_code != 200:
-                    print(f"Warning: Failed to get BibTeX for {citekey}")
-                    continue
-                    
-                bibtex = response.text
+                conn = sqlite3.connect(temp_db.name)
+                cursor = conn.cursor()
                 
-                # Create reference
-                try:
-                    self.new(pram_path, bibtex=bibtex)
+                # Get collection structure
+                cursor.execute("""
+                    WITH RECURSIVE
+                    CollectionPath(collectionID, path) AS (
+                        SELECT c.collectionID, c.collectionName
+                        FROM collections c
+                        WHERE parentCollectionID IS NULL
+                        UNION ALL
+                        SELECT c.collectionID, 
+                            cp.path || '/' || c.collectionName
+                        FROM collections c
+                        JOIN CollectionPath cp ON c.parentCollectionID = cp.collectionID
+                    )
+                    SELECT i.key, i.itemID, cp.path, idv.value as citekey
+                    FROM items i
+                    JOIN collectionItems ci ON i.itemID = ci.itemID
+                    JOIN CollectionPath cp ON ci.collectionID = cp.collectionID
+                    JOIN itemData id ON i.itemID = id.itemID
+                    JOIN itemDataValues idv ON id.valueID = idv.valueID
+                    WHERE i.itemTypeID = 2
+                    AND id.fieldID = 1;  -- citation key field
+                """)
+                
+                items = cursor.fetchall()
+                print(f"Found {len(items)} items in collections")
+                
+                # Debug: Print schema of relevant tables
+                cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='itemAttachments';")
+                print("\nitemAttachments schema:")
+                print(cursor.fetchone()[0])
+                
+                # Get attachments with corrected column names
+                cursor.execute("""
+                    SELECT i.key as parent_key,
+                        ia.path as attachment_path,
+                        itt.typeName as content_type
+                    FROM items i
+                    JOIN itemAttachments ia ON i.itemID = ia.parentItemID
+                    LEFT JOIN itemTypes itt ON i.itemTypeID = itt.itemTypeID
+                    WHERE i.itemTypeID = 2;
+                """)
+                
+                attachments = cursor.fetchall()
+                print(f"\nFound {len(attachments)} attachments")
+                
+                attachment_map = {}
+                for parent_key, path, content_type in attachments:
+                    if parent_key not in attachment_map:
+                        attachment_map[parent_key] = []
+                    attachment_map[parent_key].append((path, content_type))
+                
+                # Process each item
+                for key, item_id, collection_path, citekey in items:
+                    if not citekey or not collection_path:
+                        continue
                     
-                    # Handle attachments
-                    if key in attachment_map:
-                        for attach_path in attachment_map[key]:
-                            resolved_path = resolve_attachment_path(attach_path)
-                            if resolved_path:
-                                self._handle_attachment(
-                                    self._get_reference_dir(pram_path),
-                                    str(resolved_path)
-                                )
-                            else:
-                                print(f"Warning: Could not resolve attachment: {attach_path}")
+                    # Create pramaana path
+                    pram_path = collection_path.replace(' ', '_') + '/' + citekey
+                    print(f"\nProcessing: {pram_path}")
+                    
+                    # Get BibTeX
+                    cursor.execute("""
+                        SELECT value
+                        FROM itemDataValues
+                        WHERE valueID IN (
+                            SELECT valueID
+                            FROM itemData
+                            WHERE itemID = ?
+                            AND fieldID IN (
+                                SELECT fieldID
+                                FROM fields
+                                WHERE fieldName = 'bibtex'
+                            )
+                        )
+                    """, (item_id,))
+                    
+                    bibtex_row = cursor.fetchone()
+                    if not bibtex_row:
+                        print(f"Warning: No BibTeX found for {citekey}")
+                        continue
+                    
+                    bibtex = bibtex_row[0]
+                    
+                    try:
+                        # Create reference
+                        self.new(pram_path, bibtex=bibtex)
+                        
+                        # Handle attachments
+                        if key in attachment_map:
+                            for attach_path, content_type in attachment_map[key]:
+                                resolved_path = None
                                 
-                except PramaanaError as e:
-                    print(f"Warning: Skipping {pram_path}: {str(e)}")
-                    
-            except requests.exceptions.RequestException as e:
-                print(f"Warning: Failed to export {citekey}: {str(e)}")
-                continue
-                
-            # Small delay to avoid overwhelming the API
-            time.sleep(0.1)
-        
-        conn.close()
+                                if attach_path and attach_path.startswith('file://'):
+                                    # Absolute path
+                                    file_path = urllib.parse.unquote(attach_path[7:])
+                                    if os.path.exists(file_path):
+                                        resolved_path = file_path
+                                        
+                                elif attach_path and attach_path.startswith('attachments:'):
+                                    # Relative path
+                                    if linked_files_dir:
+                                        rel_path = attach_path.replace('attachments:', '')
+                                        full_path = os.path.join(
+                                            os.path.expanduser(linked_files_dir),
+                                            rel_path
+                                        )
+                                        if os.path.exists(full_path):
+                                            resolved_path = full_path
+                                            
+                                elif attach_path:
+                                    # Try direct path
+                                    if os.path.exists(attach_path):
+                                        resolved_path = attach_path
+                                
+                                if resolved_path:
+                                    print(f"Adding attachment: {resolved_path}")
+                                    self._handle_attachment(
+                                        self._get_reference_dir(pram_path),
+                                        resolved_path
+                                    )
+                                else:
+                                    print(f"Warning: Could not resolve attachment path: {attach_path}")
+                                    
+                    except PramaanaError as e:
+                        print(f"Warning: Skipping {pram_path}: {str(e)}")
+                        
+            finally:
+                conn.close()
+                os.unlink(temp_db.name)
+                print("\nCleaned up temporary database")
 
     def remove(self, path: str, rm_args: List[str] = None):
         """Remove a file or directory"""
