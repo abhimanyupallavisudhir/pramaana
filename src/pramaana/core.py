@@ -37,7 +37,7 @@ class Pramaana:
         self.refs_dir = Path(os.path.expanduser(self.config["pramaana_path"]))
 
         # Check translation server on init
-        self._check_translation_server()
+        # self._check_translation_server()
 
     def _check_translation_server(self):
         """Check if translation server is running"""
@@ -489,6 +489,8 @@ class Pramaana:
                 full_path.unlink()
             else:
                 shutil.rmtree(full_path)
+        
+        self.export()
 
     def trash(self, path: str, trash_args: List[str] = None):
         """Move to trash with optional trash-cli arguments"""
@@ -506,6 +508,8 @@ class Pramaana:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise PramaanaError(f"Failed to trash {path}: {result.stderr}")
+        
+        self.export()
 
     def show(self, path: str, show_args: List[str] = None):
         """Show contents with optional cat arguments"""
@@ -532,14 +536,22 @@ class Pramaana:
             with open(target) as f:
                 return f.read()
 
-    def open(self, path: str, open_args: List[str] = None):
-        """Open with optional xdg-open arguments"""
-        full_path = self.refs_dir / path
-        if not full_path.exists():
-            raise PramaanaError(f"Path not found: {path}")
+    def open(self, path: Optional[str] = None, open_args: List[str] = None):
+        """Open with optional xdg-open arguments
         
+        Args:
+            path: Optional path to open. If None, opens the root references directory.
+            open_args: Additional arguments for xdg-open
+        """
+        if path:
+            full_path = self.refs_dir / path
+            if not full_path.exists():
+                raise PramaanaError(f"Path not found: {path}")
+        else:
+            full_path = self.refs_dir
+            
         cmd = ['xdg-open'] + (open_args or []) + [str(full_path)]
         try:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
-            raise PramaanaError(f"Failed to open {path}: {e}")
+            raise PramaanaError(f"Failed to open {full_path}: {e}")

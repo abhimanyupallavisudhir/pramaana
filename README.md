@@ -39,6 +39,8 @@ pramaana new cs/ai_books/sutton_barto --from https://books.google.com/books?id=G
 pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
 
 # Run all configured exports (omit arguments to run all exports, see configuration below):
+# pramana export is called automatically after any pramana new, edit, rm, trash, mv or cp operations
+# but if you change anything outside the pramana command line, you'll want to run it afterward
 pramaana export id1 id2
 
 # Search for text
@@ -56,7 +58,7 @@ pramaana ls # or pramaana ls /path/to/subdir
 pramaana rm path/to/subdir
 pramaana trash path/to/subdir # if trash-cli is installed
 pramaana show cs/ai_books/sutton_barto/ # shows bibliographic content
-pramaana open cs/ai_books/sutton_barto/paper.pdf # opens file or directory in default application
+pramaana open # or pramana open /path/to/file/or/subdir, opens file or directory in default application
 ```
 
 ## Configuration

@@ -62,7 +62,7 @@ def main():
 
     # open command
     open_parser = subparsers.add_parser('open', help='Open a file or directory')
-    open_parser.add_argument('path', help='Path to open')
+    open_parser.add_argument('path', nargs='?', help='Path to open. If not provided, opens the root directory')
     open_parser.add_argument('open_args', nargs=argparse.REMAINDER, help='Additional arguments for xdg-open')
 
     args = parser.parse_args()
