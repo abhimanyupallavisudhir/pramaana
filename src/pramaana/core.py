@@ -412,6 +412,7 @@ class Pramaana:
         import urllib.parse
         import tempfile
         import shutil
+        import json
         
         zotero_path = Path(os.path.expanduser(zotero_dir))
         if not zotero_path.exists():
@@ -431,7 +432,7 @@ class Pramaana:
                 conn = sqlite3.connect(temp_db.name)
                 cursor = conn.cursor()
                 
-                # Get collection structure
+                # Get Better BibTeX citation keys and paths
                 cursor.execute("""
                     WITH RECURSIVE
                     CollectionPath(collectionID, path) AS (
@@ -444,32 +445,24 @@ class Pramaana:
                         FROM collections c
                         JOIN CollectionPath cp ON c.parentCollectionID = cp.collectionID
                     )
-                    SELECT i.key, i.itemID, cp.path, idv.value as citekey
+                    SELECT DISTINCT i.key, cp.path, i.itemID
                     FROM items i
                     JOIN collectionItems ci ON i.itemID = ci.itemID
                     JOIN CollectionPath cp ON ci.collectionID = cp.collectionID
-                    JOIN itemData id ON i.itemID = id.itemID
-                    JOIN itemDataValues idv ON id.valueID = idv.valueID
-                    WHERE i.itemTypeID = 2
-                    AND id.fieldID = 1;  -- citation key field
+                    WHERE i.itemTypeID = 2;
                 """)
                 
                 items = cursor.fetchall()
                 print(f"Found {len(items)} items in collections")
                 
-                # Debug: Print schema of relevant tables
-                cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='itemAttachments';")
-                print("\nitemAttachments schema:")
-                print(cursor.fetchone()[0])
-                
-                # Get attachments with corrected column names
+                # Get attachments
                 cursor.execute("""
                     SELECT i.key as parent_key,
                         ia.path as attachment_path,
-                        itt.typeName as content_type
+                        ia.linkMode,
+                        ia.contentType
                     FROM items i
                     JOIN itemAttachments ia ON i.itemID = ia.parentItemID
-                    LEFT JOIN itemTypes itt ON i.itemTypeID = itt.itemTypeID
                     WHERE i.itemTypeID = 2;
                 """)
                 
@@ -477,42 +470,45 @@ class Pramaana:
                 print(f"\nFound {len(attachments)} attachments")
                 
                 attachment_map = {}
-                for parent_key, path, content_type in attachments:
+                for parent_key, path, link_mode, content_type in attachments:
                     if parent_key not in attachment_map:
                         attachment_map[parent_key] = []
-                    attachment_map[parent_key].append((path, content_type))
+                    attachment_map[parent_key].append((path, link_mode, content_type))
+                
+                # Find Better BibTeX data directory
+                bbt_dir = zotero_path.parent / "better-bibtex"
+                if not bbt_dir.exists():
+                    raise PramaanaError("Better BibTeX data directory not found")
+                    
+                # Get citation keys from Better BibTeX cache
+                keys_file = bbt_dir / "cache" / "keys.json"
+                if not keys_file.exists():
+                    raise PramaanaError("Better BibTeX citation keys cache not found")
+                    
+                with open(keys_file) as f:
+                    citation_keys = json.load(f)
                 
                 # Process each item
-                for key, item_id, collection_path, citekey in items:
-                    if not citekey or not collection_path:
+                for key, collection_path, item_id in items:
+                    # Get citation key from Better BibTeX cache
+                    if key not in citation_keys:
+                        print(f"Warning: No citation key found for item {key}")
                         continue
+                        
+                    citekey = citation_keys[key]
                     
                     # Create pramaana path
                     pram_path = collection_path.replace(' ', '_') + '/' + citekey
                     print(f"\nProcessing: {pram_path}")
                     
-                    # Get BibTeX
-                    cursor.execute("""
-                        SELECT value
-                        FROM itemDataValues
-                        WHERE valueID IN (
-                            SELECT valueID
-                            FROM itemData
-                            WHERE itemID = ?
-                            AND fieldID IN (
-                                SELECT fieldID
-                                FROM fields
-                                WHERE fieldName = 'bibtex'
-                            )
-                        )
-                    """, (item_id,))
-                    
-                    bibtex_row = cursor.fetchone()
-                    if not bibtex_row:
-                        print(f"Warning: No BibTeX found for {citekey}")
+                    # Get BibTeX from Better BibTeX Export
+                    export_file = bbt_dir / "cache" / f"export/{key}.bibtex"
+                    if not export_file.exists():
+                        print(f"Warning: No BibTeX export found for {citekey}")
                         continue
-                    
-                    bibtex = bibtex_row[0]
+                        
+                    with open(export_file) as f:
+                        bibtex = f.read()
                     
                     try:
                         # Create reference
@@ -520,30 +516,29 @@ class Pramaana:
                         
                         # Handle attachments
                         if key in attachment_map:
-                            for attach_path, content_type in attachment_map[key]:
+                            for attach_path, link_mode, content_type in attachment_map[key]:
                                 resolved_path = None
                                 
-                                if attach_path and attach_path.startswith('file://'):
-                                    # Absolute path
-                                    file_path = urllib.parse.unquote(attach_path[7:])
-                                    if os.path.exists(file_path):
-                                        resolved_path = file_path
-                                        
-                                elif attach_path and attach_path.startswith('attachments:'):
-                                    # Relative path
-                                    if linked_files_dir:
-                                        rel_path = attach_path.replace('attachments:', '')
-                                        full_path = os.path.join(
-                                            os.path.expanduser(linked_files_dir),
-                                            rel_path
-                                        )
-                                        if os.path.exists(full_path):
-                                            resolved_path = full_path
-                                            
-                                elif attach_path:
-                                    # Try direct path
-                                    if os.path.exists(attach_path):
-                                        resolved_path = attach_path
+                                if attach_path:
+                                    if link_mode == 2:  # Linked file
+                                        # Try absolute path first
+                                        if os.path.exists(attach_path):
+                                            resolved_path = attach_path
+                                        # Then try relative to linked_files_dir
+                                        elif linked_files_dir:
+                                            full_path = os.path.join(
+                                                os.path.expanduser(linked_files_dir),
+                                                attach_path
+                                            )
+                                            if os.path.exists(full_path):
+                                                resolved_path = full_path
+                                                
+                                    elif link_mode == 1:  # Stored file
+                                        storage_dir = zotero_path / "storage"
+                                        if storage_dir.exists():
+                                            full_path = storage_dir / attach_path
+                                            if full_path.exists():
+                                                resolved_path = str(full_path)
                                 
                                 if resolved_path:
                                     print(f"Adding attachment: {resolved_path}")
