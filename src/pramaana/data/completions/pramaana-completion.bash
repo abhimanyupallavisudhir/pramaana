@@ -33,8 +33,10 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
             if [ "$prev" = "--via" ]; then
                 COMPREPLY=( $(compgen -W "ln cp mv" -- ${cur}) )
             else
-                # Complete only .bib files
-                COMPREPLY=( $(compgen -f -X '!*.bib' -- "${cur}") )
+                # Complete both directories and .bib files
+                local files=( $(compgen -f -X '!*.bib' -- "${cur}") )
+                local dirs=( $(compgen -d -- "${cur}") )
+                COMPREPLY=( "${files[@]}" "${dirs[@]}" )
             fi
             ;;
         export)
