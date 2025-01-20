@@ -11,7 +11,7 @@ In theory this is the perfect and optimal reference manager. Unfortunately it tu
 The recommended way to install Pramaana is using pipx:
 
 ```bash
-pipx install pramaana # not yet published, lol
+pipx install pramaana
 pramaana-install-completions # to install shell completions; see below though
 ```
 
