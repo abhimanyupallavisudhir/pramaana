@@ -555,3 +555,69 @@ class Pramaana:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             raise PramaanaError(f"Failed to open {full_path}: {e}")
+
+    def move(self, source: str, dest: str, mv_args: List[str] = None):
+        """Move a file or directory with optional mv arguments"""
+        src_path = self.refs_dir / source
+        dest_path = self.refs_dir / dest
+        
+        if not src_path.exists():
+            raise PramaanaError(f"Source not found: {source}")
+            
+        if mv_args:
+            cmd = ['mv'] + mv_args + [str(src_path), str(dest_path)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"mv command failed: {e}")
+        else:
+            os.makedirs(dest_path.parent, exist_ok=True)
+            shutil.move(str(src_path), str(dest_path))
+        
+        # Process exports after moving
+        self.export()
+
+    def copy(self, source: str, dest: str, cp_args: List[str] = None):
+        """Copy a file or directory with optional cp arguments"""
+        src_path = self.refs_dir / source
+        dest_path = self.refs_dir / dest
+        
+        if not src_path.exists():
+            raise PramaanaError(f"Source not found: {source}")
+            
+        if cp_args:
+            cmd = ['cp'] + cp_args + [str(src_path), str(dest_path)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"cp command failed: {e}")
+        else:
+            os.makedirs(dest_path.parent, exist_ok=True)
+            if src_path.is_dir():
+                shutil.copytree(str(src_path), str(dest_path))
+            else:
+                shutil.copy2(str(src_path), str(dest_path))
+        
+        # Process exports after copying
+        self.export()
+
+    def link(self, source: str, dest: str, ln_args: List[str] = None):
+        """Create a link with optional ln arguments"""
+        src_path = self.refs_dir / source
+        dest_path = self.refs_dir / dest
+        
+        if not src_path.exists():
+            raise PramaanaError(f"Source not found: {source}")
+            
+        if ln_args:
+            cmd = ['ln'] + ln_args + [str(src_path), str(dest_path)]
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                raise PramaanaError(f"ln command failed: {e}")
+        else:
+            os.makedirs(dest_path.parent, exist_ok=True)
+            os.link(str(src_path), str(dest_path))
+        
+        # Process exports after linking
+        self.export()

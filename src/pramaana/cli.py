@@ -65,6 +65,24 @@ def main():
     open_parser.add_argument('path', nargs='?', help='Path to open. If not provided, opens the root directory')
     open_parser.add_argument('open_args', nargs=argparse.REMAINDER, help='Additional arguments for xdg-open')
 
+    # mv command
+    mv_parser = subparsers.add_parser('mv', help='Move files or directories')
+    mv_parser.add_argument('source', help='Source path')
+    mv_parser.add_argument('dest', help='Destination path')
+    mv_parser.add_argument('mv_args', nargs=argparse.REMAINDER, help='Additional arguments for mv')
+
+    # cp command
+    cp_parser = subparsers.add_parser('cp', help='Copy files or directories')
+    cp_parser.add_argument('source', help='Source path')
+    cp_parser.add_argument('dest', help='Destination path')
+    cp_parser.add_argument('cp_args', nargs=argparse.REMAINDER, help='Additional arguments for cp')
+
+    # ln command
+    ln_parser = subparsers.add_parser('ln', help='Create links')
+    ln_parser.add_argument('source', help='Source path')
+    ln_parser.add_argument('dest', help='Destination path')
+    ln_parser.add_argument('ln_args', nargs=argparse.REMAINDER, help='Additional arguments for ln')
+
     args = parser.parse_args()
     
     if not args.command:
@@ -158,6 +176,19 @@ def main():
 
         elif args.command == 'open':
             pramaana.open(args.path, args.open_args)
+
+        # In the command handling section:
+        elif args.command == 'mv':
+            pramaana.move(args.source, args.dest, args.mv_args)
+            print(f"Moved {args.source} to {args.dest}")
+        
+        elif args.command == 'cp':
+            pramaana.copy(args.source, args.dest, args.cp_args)
+            print(f"Copied {args.source} to {args.dest}")
+        
+        elif args.command == 'ln':
+            pramaana.link(args.source, args.dest, args.ln_args)
+            print(f"Linked {args.source} to {args.dest}")
 
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
