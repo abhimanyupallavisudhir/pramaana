@@ -25,11 +25,24 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
 
     _arguments -C \
         '1: :->command' \
-        '*: :->args'
+        '*: :->args' \
+        '--template:template name:->templates'
 
     case $state in
         command)
             _describe -t commands 'pramaana commands' commands
+            ;;
+        templates)
+            local -a templates
+            templates=( ${(f)"$(python3 -c '
+import os
+from pathlib import Path
+template_dir = Path(os.path.expanduser("~/.pramaana/templates"))
+if template_dir.exists():
+    for f in template_dir.glob("*.bib"):
+        print(f"{f.stem}:{f.stem} template")
+')"} )
+            _describe -t templates 'templates' templates
             ;;
         args)
             case $words[2] in
@@ -54,7 +67,7 @@ import os
 with open(os.path.expanduser("~/.pramaana/config.json")) as f:
     config = json.load(f)
     for name in config["exports"].keys():
-        print(name)
+                        print(name)
 ')"} )
                     _values 'exports' $exports
                     ;;

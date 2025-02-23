@@ -25,9 +25,43 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
     # Handle command-specific completions
     case "${cmd}" in
         ls|rm|trash|show|open|edit|new|grep|mv|cp|ln)
-            # Complete with paths from pramaana data directory
-            local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
-            COMPREPLY=( $(printf "%s\n" "${paths}") )
+            case "$prev" in
+                --template)
+                    # Complete template names
+                    local templates=$(python3 -c '
+import os
+from pathlib import Path
+templates = []
+template_dir = Path(os.path.expanduser("~/.pramaana/templates"))
+if template_dir.exists():
+    templates.extend(f.stem for f in template_dir.glob("*.bib"))
+print(" ".join(templates))
+')
+                    COMPREPLY=( $(compgen -W "${templates}" -- ${cur}) )
+                    ;;
+                --template=*)
+                    # Handle --template=<tab> case
+                    local templates=$(python3 -c '
+import os
+from pathlib import Path
+templates = []
+template_dir = Path(os.path.expanduser("~/.pramaana/templates"))
+if template_dir.exists():
+                        templates.extend(f.stem for f in template_dir.glob("*.bib"))
+print(" ".join(templates))
+')
+                    local prefix=${cur#--template=}
+                    COMPREPLY=( $(compgen -W "${templates}" -- ${prefix}) )
+                    for i in "${!COMPREPLY[@]}"; do
+                        COMPREPLY[$i]="--template=${COMPREPLY[$i]}"
+                    done
+                    ;;
+                *)
+                    # Complete with paths from pramaana data directory
+                    local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
+                    COMPREPLY=( $(printf "%s\n" "${paths}") )
+                    ;;
+            esac
             ;;
         import)
             if [ "$prev" = "--via" ]; then
