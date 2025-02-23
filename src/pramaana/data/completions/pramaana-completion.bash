@@ -24,7 +24,7 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
 
     # Handle command-specific completions
     case "${cmd}" in
-        ls|rm|trash|show|open|edit|grep|mv|cp|ln)
+        ls|rm|trash|show|open|edit|new|grep|mv|cp|ln)
             # Complete with paths from pramaana data directory
             local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
             COMPREPLY=( $(printf "%s\n" "${paths}") )
