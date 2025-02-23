@@ -56,6 +56,12 @@ For zsh, add to your ~/.zshrc:
     fpath=(~/.zsh/completion $fpath)
     autoload -Uz compinit
     compinit
+
+If you're using oh-my-zsh, that would slow down your startup time. You should instead just add
+          
+    fpath=(~/.zsh/completion $fpath)
+
+Before the `source $ZSH/oh-my-zsh.sh` line in your ~/.zshrc.
     """)
 
 if __name__ == '__main__':

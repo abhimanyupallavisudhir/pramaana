@@ -129,7 +129,13 @@ autoload -Uz compinit
 compinit
 ```
 
-This does add like half a second to zsh startup time though (bash seems fine).
+If you're using `oh-my-zsh`, **this will slow down your startup time**. You should instead just add
+
+```zsh
+fpath=(~/.zsh/completion $fpath)
+```
+
+*before* `source $ZSH/oh-my-zsh.sh`.
 
 ## Importing your references
 
