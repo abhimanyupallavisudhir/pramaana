@@ -93,7 +93,7 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 
 `source` for exports takes gitignore style patterns to exclude and include folders.
 
-In addition you can modify the default templates for the `pramaana new ... --template=` option by storing/editing them as `~/.pramaana/templates/article.bib` etc.
+In addition you can modify the default templates for the `pramaana new ... --template=` option by storing/editing them as `~/.pramaana/templates/article.bib` etc. (The default templates will be dumped in `~./pramaana/templates/` after the first run; you can inspect them beforehand in `src/pramaana/core.py::DEFAULT_TEMPLATES`.)
 
 ## Shell Completion
 
@@ -102,6 +102,9 @@ You can get:
 - Command completion: `pramaana <tab>` shows all available commands
 - Path completion: `pramaana show cs/<tab>` shows subdirectories
 - Export completion: `pramaana export <tab>` shows configured export names
+- Template completion: `pramaana new bla/foo/bar --template <tab>` shows all available templates
+
+[NOTE: `--template=<tab>` and `--template<tab>` also work on zsh but not on bash. This is because Claude wrote them and it doesn't seem important enough to bother manually inspecting; just use `--template <tab>` i.e. with space, on bash.]
 
 After installing, run
 
