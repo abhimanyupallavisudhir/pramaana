@@ -23,53 +23,59 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
     print(os.path.expanduser(json.load(f)["pramaana_path"]))
 ')
 
-    _arguments -C \
-        '1: :->command' \
-        '*: :->args' \
-        '--template:template name:->templates'
-
-    case $state in
-        command)
-            _describe -t commands 'pramaana commands' commands
-            ;;
-        templates)
-            local -a templates
-            templates=( ${(f)"$(python3 -c '
+    # Just get template names without descriptions
+    local -a templates
+    templates=( ${(f)"$(python3 -c '
 import os
 from pathlib import Path
 template_dir = Path(os.path.expanduser("~/.pramaana/templates"))
 if template_dir.exists():
     for f in template_dir.glob("*.bib"):
-        print(f"{f.stem}:{f.stem} template")
+        print(f.stem)
 ')"} )
-            _describe -t templates 'templates' templates
+
+    case $words[2] in
+        new|edit)
+            _arguments \
+                '1: :->command' \
+                '*:path:_path_files -W $data_dir' \
+                '--template=:template:($templates)' \
+                '--template:template:($templates)' \
+                '--from:URL or file:_files' \
+                '--attach:attachment:_files'
             ;;
-        args)
-            case $words[2] in
-                ls|rm|trash|show|open|edit|new|grep|mv|cp|ln)
-                    _path_files -W $data_dir
+        ls|rm|trash|show|open|grep|mv|cp|ln)
+            _path_files -W $data_dir
+            ;;
+        import)
+            case $words[(($CURRENT - 1))] in
+                --via)
+                    _values 'via' 'ln' 'cp' 'mv'
                     ;;
-                import)
-                    case $words[(($CURRENT - 1))] in
-                        --via)
-                            _values 'via' 'ln' 'cp' 'mv'
-                            ;;
-                        *)
-                            _files -g "*.bib"
-                            ;;
-                    esac
+                *)
+                    _files -g "*.bib"
                     ;;
-                export)
-                    local -a exports
-                    exports=( ${(f)"$(python3 -c '
+            esac
+            ;;
+        export)
+            local -a exports
+            exports=( ${(f)"$(python3 -c '
 import json
 import os
 with open(os.path.expanduser("~/.pramaana/config.json")) as f:
     config = json.load(f)
     for name in config["exports"].keys():
-                        print(name)
+        print(name)
 ')"} )
-                    _values 'exports' $exports
+            _values 'exports' $exports
+            ;;
+        *)
+            _arguments -C \
+                '1: :->command' \
+                '*: :->args'
+            case $state in
+                command)
+                    _describe -t commands 'pramaana commands' commands
                     ;;
             esac
             ;;
