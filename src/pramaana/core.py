@@ -27,80 +27,201 @@ DEFAULT_CONFIG = {
 DEFAULT_TEMPLATES = {
     "article": r"""@article{key,
     title = {Enter title},
-    author = {Author Name},
+    author = {Author1 LastName and Author2 LastName and Author3 LastName},
     journal = {Journal Name},
     year = {2024},
     volume = {},
     number = {},
-    pages = {},
-    doi = {}
+    pages = {start--end},
+    month = {},
+    doi = {10.xxxx/xxxxx},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    issn = {},
+    publisher = {}
 }""",
 
     "book": r"""@book{key,
     title = {Enter title},
-    author = {Author Name},
+    author = {Author LastName, FirstName and Author2 LastName, FirstName},
     year = {2024},
     publisher = {Publisher Name},
-    address = {},
-    isbn = {},
-    edition = {}
+    address = {City, Country},
+    isbn = {ISBN-13},
+    edition = {Edition number or description},
+    volume = {},
+    series = {},
+    doi = {},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    note = {},
+    language = {english}
 }""",
 
     "inproceedings": r"""@inproceedings{key,
     title = {Enter title},
-    author = {Author Name},
-    booktitle = {Conference Name},
+    author = {Author1, FirstName and Author2, FirstName},
+    booktitle = {Proceedings of the Conference Name},
+    series = {Conference series, if applicable},
     year = {2024},
-    pages = {},
-    organization = {},
-    doi = {}
+    month = {},
+    pages = {start--end},
+    publisher = {},
+    address = {Conference Location},
+    organization = {Organizing Body},
+    doi = {10.xxxx/xxxxx},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    note = {}
 }""",
 
     "techreport": r"""@techreport{key,
     title = {Enter title},
-    author = {Author Name},
+    author = {Author1, FirstName and Author2, FirstName},
     institution = {Institution Name},
     year = {2024},
-    number = {},
-    type = {},
-    address = {}
+    month = {},
+    number = {Technical Report Number},
+    type = {Technical Report},
+    address = {Institution Location},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    note = {},
+    doi = {}
 }""",
 
     "thesis": r"""@thesis{key,
     title = {Enter title},
-    author = {Author Name},
+    author = {Author LastName, FirstName},
     school = {University Name},
     year = {2024},
-    type = {PhD Thesis},
-    address = {}
+    month = {},
+    type = {PhD Thesis},  % or {Master's Thesis}, {Bachelor's Thesis}
+    address = {University Location},
+    url = {},
+    doi = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    committee = {Advisor Name and Committee Member Names},
+    department = {Department Name},
+    note = {}
 }""",
 
     "web": r"""@misc{key,
-    title = {Enter title},
-    author = {Author or Organization},
+    title = {Page or Resource Title},
+    author = {Author or Organization Name},
     year = {2024},
     howpublished = {\url{Enter URL}},
-    note = {Accessed: \today}
+    note = {Accessed: \today},
+    organization = {Website or Organization Name},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    language = {english},
+    lastaccessed = {\today},
+    archiveurl = {},  % Web archive URL if available
+    archivedate = {}  % Date of archive snapshot
 }""",
 
     "software": r"""@software{key,
     title = {Software Name},
-    author = {Author Name},
+    author = {Author1, FirstName and Author2, FirstName},
     year = {2024},
-    version = {},
+    month = {},
+    version = {x.y.z},
     url = {},
+    doi = {},
     publisher = {},
-    doi = {}
+    organization = {Organization Name},
+    repository = {Repository URL},
+    programmingLanguage = {Language},
+    license = {License Name},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    requirements = {},
+    note = {}
 }""",
 
     "dataset": r"""@misc{key,
     title = {Dataset Name},
-    author = {Author Name},
+    author = {Creator1, FirstName and Creator2, FirstName},
     year = {2024},
-    howpublished = {},
+    month = {},
     note = {Dataset},
     doi = {},
-    url = {}
+    url = {},
+    version = {},
+    publisher = {Publishing Organization},
+    organization = {Hosting Organization},
+    size = {},  % Dataset size
+    format = {},  % Data format(s)
+    license = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    temporalCoverage = {},  % Time period covered
+    spatialCoverage = {},   % Geographic coverage if applicable
+    methodology = {}        % Brief description of data collection methodology
+}""",
+
+    "preprint": r"""@article{key,
+    title = {Enter title},
+    author = {Author1 LastName and Author2 LastName},
+    year = {2024},
+    month = {},
+    eprint = {},      % e.g., arXiv identifier
+    primaryClass = {}, % e.g., cs.AI, math.CO
+    archivePrefix = {arXiv},  % or other preprint server
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    note = {Preprint},
+    version = {},     % Preprint version/revision
+    institution = {}, % Author affiliation
+    funding = {}      % Funding acknowledgment
+}""",
+
+    "patent": r"""@patent{key,
+    title = {Patent Title},
+    author = {Inventor1 Name and Inventor2 Name},
+    year = {2024},
+    month = {},
+    number = {Patent Number},
+    type = {Patent},
+    nationality = {Country Code},
+    yearfiled = {},
+    monthfiled = {},
+    assignee = {Organization Name},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    status = {},      % e.g., Applied, Granted, Expired
+    filing_date = {}, % Full filing date
+    issue_date = {},  % Full issue date if granted
+    priority_date = {}
+}""",
+
+    "video": r"""@misc{key,
+    title = {Video Title},
+    author = {Creator Name or Organization},
+    year = {2024},
+    month = {},
+    howpublished = {\url{Video URL}},
+    note = {Video},
+    duration = {},    % Duration in minutes
+    platform = {},    % e.g., YouTube, Vimeo
+    channel = {},     % Channel or creator name
+    publisher = {},
+    url = {},
+    abstract = {},
+    keywords = {keyword1, keyword2, keyword3},
+    language = {english},
+    lastaccessed = {\today},
+    quality = {},     % e.g., 1080p, 4K
+    series = {}       % If part of a series
 }"""
 }
 
@@ -115,7 +236,7 @@ class Pramaana:
         self.config_file = self.config_dir / "config.json"
         self.config = self._load_config()
         self.refs_dir = Path(os.path.expanduser(self.config["pramaana_path"]))
-
+        self._load_templates()
         # Check translation server on init
         # self._check_translation_server()
 

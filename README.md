@@ -32,8 +32,14 @@ Main commands:
 
 ```bash
 # Create a new reference
-# [Omit `--from` to write in a bib file manually in your default text editor. Use `--attach` without any arguments (i.e. omit `paper.pdf`) to attach the latest item in `~/Downloads` (can be configured, see later).]
+# 1) Omit `--from` to write in a bib file manually in vim, with a pre-
+#    specified template given by --template=article, book, web etc.
+#    (can be configured, see later)
+# 2) Use `--attach` without any arguments (i.e. omit `paper.pdf`) to 
+#    attach the latest item in `~/Downloads`
+#    (can be configured, see later).
 pramaana new cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
+pramaana new cs/ai_books/sutton_barto --template=book --attach paper.pdf
 
 # Update a reference:
 pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
@@ -85,7 +91,9 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 }
 ```
 
-`source` for exports takes gitignore style patterns to exclude and include folders 
+`source` for exports takes gitignore style patterns to exclude and include folders.
+
+In addition you can modify the default templates for the `pramaana new ... --template=` option by storing/editing them as `~/.pramaana/templates/article.bib` etc.
 
 ## Shell Completion
 
