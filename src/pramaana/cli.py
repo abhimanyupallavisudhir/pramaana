@@ -12,7 +12,10 @@ def main():
     new_parser = subparsers.add_parser('new', help='Create new reference')
     new_parser.add_argument('path', help='Reference path (e.g. cs/ai_books/sutton_barto)')
     new_parser.add_argument('--from', dest='source', help='Source URL or BibTeX file')
-    new_parser.add_argument('--attach', nargs='?', const='', help='Attachment file path (uses latest file from watch dir if no path given)')
+    new_parser.add_argument('--attach', nargs='?', const='', 
+                          help='Attachment file path (uses latest file from watch dir if no path given)')
+    new_parser.add_argument('--template', help='BibTeX template to use (e.g. article, book, web)')
+
     
     # edit command
     edit_parser = subparsers.add_parser('edit', help='Edit existing reference')
@@ -99,7 +102,6 @@ def main():
                 with open(os.path.expanduser(args.source)) as f:
                     bibtex = f.read()
             
-            # Convert None attach to empty string if flag was used
             attachment = None
             if args.attach is not None:  # --attach was used
                 attachment = args.attach or ''  # will be '' if no value provided
@@ -109,7 +111,8 @@ def main():
                     args.path,
                     source_url=None if source_is_file else args.source,
                     attachment=attachment,
-                    bibtex=bibtex
+                    bibtex=bibtex,
+                    template=args.template
                 )
                 print(f"Created reference: {args.path}")
             else:

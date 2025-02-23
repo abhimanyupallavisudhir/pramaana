@@ -24,6 +24,86 @@ DEFAULT_CONFIG = {
     },
 }
 
+DEFAULT_TEMPLATES = {
+    "article": r"""@article{key,
+    title = {Enter title},
+    author = {Author Name},
+    journal = {Journal Name},
+    year = {2024},
+    volume = {},
+    number = {},
+    pages = {},
+    doi = {}
+}""",
+
+    "book": r"""@book{key,
+    title = {Enter title},
+    author = {Author Name},
+    year = {2024},
+    publisher = {Publisher Name},
+    address = {},
+    isbn = {},
+    edition = {}
+}""",
+
+    "inproceedings": r"""@inproceedings{key,
+    title = {Enter title},
+    author = {Author Name},
+    booktitle = {Conference Name},
+    year = {2024},
+    pages = {},
+    organization = {},
+    doi = {}
+}""",
+
+    "techreport": r"""@techreport{key,
+    title = {Enter title},
+    author = {Author Name},
+    institution = {Institution Name},
+    year = {2024},
+    number = {},
+    type = {},
+    address = {}
+}""",
+
+    "thesis": r"""@thesis{key,
+    title = {Enter title},
+    author = {Author Name},
+    school = {University Name},
+    year = {2024},
+    type = {PhD Thesis},
+    address = {}
+}""",
+
+    "web": r"""@misc{key,
+    title = {Enter title},
+    author = {Author or Organization},
+    year = {2024},
+    howpublished = {\url{Enter URL}},
+    note = {Accessed: \today}
+}""",
+
+    "software": r"""@software{key,
+    title = {Software Name},
+    author = {Author Name},
+    year = {2024},
+    version = {},
+    url = {},
+    publisher = {},
+    doi = {}
+}""",
+
+    "dataset": r"""@misc{key,
+    title = {Dataset Name},
+    author = {Author Name},
+    year = {2024},
+    howpublished = {},
+    note = {Dataset},
+    doi = {},
+    url = {}
+}"""
+}
+
 
 class PramaanaError(Exception):
     pass
@@ -192,12 +272,49 @@ class Pramaana:
                 f"Invalid attachment mode: {self.config['attachment_mode']}"
             )
 
+    def _load_templates(self) -> Dict[str, str]:
+        """Load BibTeX templates from config directory"""
+        templates = DEFAULT_TEMPLATES.copy()
+        template_dir = self.config_dir / "templates"
+        
+        if not template_dir.exists():
+            # Create template directory and save default templates
+            template_dir.mkdir(exist_ok=True)
+            for name, content in DEFAULT_TEMPLATES.items():
+                with open(template_dir / f"{name}.bib", "w") as f:
+                    f.write(content)
+        else:
+            # Load any custom templates
+            for template_file in template_dir.glob("*.bib"):
+                name = template_file.stem
+                with open(template_file) as f:
+                    templates[name] = f.read()
+        
+        return templates
+
+    def _get_template(self, template_name: Optional[str] = None) -> str:
+        """Get a BibTeX template by name"""
+        templates = self._load_templates()
+        
+        if template_name is None:
+            return templates["article"]  # Default template
+            
+        if template_name not in templates:
+            raise PramaanaError(
+                f"Template '{template_name}' not found. Available templates: "
+                f"{', '.join(sorted(templates.keys()))}"
+            )
+        
+        return templates[template_name]
+
+
     def new(
         self,
         ref_path: str,
         source_url: Optional[str] = None,
         attachment: Optional[str] = None,
         bibtex: Optional[str] = None,
+        template: Optional[str] = None,
     ):
         """Create a new reference"""
         ref_dir = self._get_reference_dir(ref_path)
@@ -214,11 +331,9 @@ class Pramaana:
         elif bibtex:
             bibtex_content = bibtex
         else:
-            # Open editor for manual entry
+            # Open editor with template
             with tempfile.NamedTemporaryFile(suffix=".bib", mode="w+") as tf:
-                tf.write(
-                    "@article{key,\n  title = {Enter title},\n  author = {Author Name},\n  year = {2024}\n}"
-                )
+                tf.write(self._get_template(template))
                 tf.flush()
                 subprocess.call([os.environ.get("EDITOR", "vim"), tf.name])
                 tf.seek(0)
