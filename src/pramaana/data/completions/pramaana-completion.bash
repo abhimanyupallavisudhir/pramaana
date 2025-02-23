@@ -22,13 +22,8 @@ with open(os.path.expanduser("~/.pramaana/config.json")) as f:
     print(os.path.expanduser(json.load(f)["pramaana_path"]))
 ')
 
-    # Handle command-specific completions
-    case "${cmd}" in
-        ls|rm|trash|show|open|edit|new|grep|mv|cp|ln)
-            case "$prev" in
-                --template)
-                    # Complete template names
-                    local templates=$(python3 -c '
+    # Get list of templates
+    local templates=$(python3 -c '
 import os
 from pathlib import Path
 templates = []
@@ -37,31 +32,32 @@ if template_dir.exists():
     templates.extend(f.stem for f in template_dir.glob("*.bib"))
 print(" ".join(templates))
 ')
-                    COMPREPLY=( $(compgen -W "${templates}" -- ${cur}) )
-                    ;;
-                --template=*)
-                    # Handle --template=<tab> case
-                    local templates=$(python3 -c '
-import os
-from pathlib import Path
-templates = []
-template_dir = Path(os.path.expanduser("~/.pramaana/templates"))
-if template_dir.exists():
-                        templates.extend(f.stem for f in template_dir.glob("*.bib"))
-print(" ".join(templates))
-')
-                    local prefix=${cur#--template=}
-                    COMPREPLY=( $(compgen -W "${templates}" -- ${prefix}) )
-                    for i in "${!COMPREPLY[@]}"; do
-                        COMPREPLY[$i]="--template=${COMPREPLY[$i]}"
-                    done
-                    ;;
-                *)
-                    # Complete with paths from pramaana data directory
-                    local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
-                    COMPREPLY=( $(printf "%s\n" "${paths}") )
-                    ;;
-            esac
+
+    # Check if we're working with template option
+    if [[ "$cur" == "-"* ]]; then
+        if [[ "$cur" == "--temp"* ]]; then
+            COMPREPLY=( $(compgen -W "--template --template=" -- "$cur") )
+            return 0
+        fi
+    elif [[ "$cur" == *"="* ]]; then
+        local opt=${cur%%=*}
+        local val=${cur#*=}
+        if [ "$opt" = "--template" ]; then
+            COMPREPLY=( $(compgen -W "$templates" -- "$val") )
+            COMPREPLY=( "${COMPREPLY[@]/#/--template=}" )
+            return 0
+        fi
+    elif [ "$prev" = "--template" ]; then
+        COMPREPLY=( $(compgen -W "$templates" -- "$cur") )
+        return 0
+    fi
+
+    # Handle command-specific completions
+    case "${cmd}" in
+        ls|rm|trash|show|open|edit|new|grep|mv|cp|ln)
+            # Complete with paths from pramaana data directory
+            local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
+            COMPREPLY=( $(printf "%s\n" "${paths}") )
             ;;
         import)
             if [ "$prev" = "--via" ]; then
