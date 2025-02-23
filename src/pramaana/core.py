@@ -357,24 +357,19 @@ class Pramaana:
 
         return results
 
-    def grep(
-        self,
-        pattern: str,
-        paths: Optional[List[str]] = None,
-        grep_args: List[str] = None,
-    ):
+    def grep(self, pattern: str, paths: Optional[List[str]] = None, grep_args: List[str] = None):
         """Search references using grep
-
+        
         Args:
             pattern: Search pattern
             paths: Optional list of paths to search in (relative to refs_dir)
             grep_args: Additional arguments to pass to grep
         """
-        # Build grep command
-        cmd = ["grep"] + (grep_args or [])
-        # Add pattern
+        # Build grep command with default options for color and filename output
+        cmd = ['grep', '--color=auto', '-H']  # -H forces filename output even with single file
+        cmd.extend(grep_args or [])
         cmd.append(pattern)
-
+        
         # Handle search paths
         if paths:
             search_paths = []
@@ -382,29 +377,26 @@ class Pramaana:
                 search_dir = self.refs_dir / path
                 if not search_dir.exists():
                     raise PramaanaError(f"Path not found: {path}")
-                search_paths.extend(
-                    search_dir.rglob(f"*.{self.config['storage_format']}")
-                )
+                search_paths.extend(search_dir.rglob(f"*.{self.config['storage_format']}"))
         else:
             search_paths = self.refs_dir.rglob(f"*.{self.config['storage_format']}")
-
+        
         # Add files to search
         file_list = [str(f) for f in search_paths]
         if not file_list:
             print("No files to search")
             return
-
+        
         cmd.extend(file_list)
-
+        
         try:
-            subprocess.run(
-                cmd, check=False
-            )  # Don't check=True as grep returns 1 if no matches
+            # Use env to ensure color output even when piped
+            env = os.environ.copy()
+            env['GREP_COLORS'] = 'mt=01;31:fn=35:ln=32:se=36'  # Standard grep colors
+            subprocess.run(cmd, check=False, env=env)
         except subprocess.CalledProcessError as e:
             if e.returncode != 1:  # 1 means no matches, which is fine
-                raise PramaanaError(
-                    f"grep command failed: {str(e)}\n{traceback.format_exc()}"
-                )
+                raise PramaanaError(f"grep command failed: {e}")
 
     def import_zotero(self, bib_file: str, via: str = 'ln'):
         """Import references from BetterBibTeX export
