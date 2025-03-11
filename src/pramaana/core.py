@@ -603,7 +603,16 @@ class Pramaana:
         """
         # Build grep command with default options for color and filename output
         cmd = ['grep', '--color=auto', '-H']  # -H forces filename output even with single file
-        cmd.extend(grep_args or [])
+        
+        # Check if --include is specified in grep_args
+        grep_args = grep_args or []
+        has_include = any(arg.startswith('--include=') for arg in grep_args)
+        
+        # If no include pattern specified, add our default
+        if not has_include:
+            cmd.append(f'--include=*.{self.config["storage_format"]}')
+        
+        cmd.extend(grep_args)
         cmd.append(pattern)
         
         # Handle search paths
@@ -613,12 +622,14 @@ class Pramaana:
                 search_dir = self.refs_dir / path
                 if not search_dir.exists():
                     raise PramaanaError(f"Path not found: {path}")
-                search_paths.extend(search_dir.rglob(f"*.{self.config['storage_format']}"))
+                # Use rglob with * to get all files, let grep handle filtering
+                search_paths.extend(search_dir.rglob("*"))
         else:
-            search_paths = self.refs_dir.rglob(f"*.{self.config['storage_format']}")
+            # Use rglob with * to get all files, let grep handle filtering
+            search_paths = self.refs_dir.rglob("*")
         
         # Add files to search
-        file_list = [str(f) for f in search_paths]
+        file_list = [str(f) for f in search_paths if f.is_file()]
         if not file_list:
             print("No files to search")
             return
