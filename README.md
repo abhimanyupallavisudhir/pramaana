@@ -38,6 +38,8 @@ Main commands:
 # 2) Use `--attach` without any arguments (i.e. omit `paper.pdf`) to 
 #    attach the latest item in `~/Downloads`
 #    (can be configured, see later).
+# 3) Use `--attach 3` (or any positive integer) to attach the latest 3
+#    items in `~/Downloads`
 pramaana new cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
 pramaana new cs/ai_books/sutton_barto --template=book --attach paper.pdf
 
