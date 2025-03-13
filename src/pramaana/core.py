@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
     "attachment_watch_dir": "~/Downloads",
     "pramaana_path": "~/.pramaana_data",
     "translation_server": "http://localhost:1969",
+    "verbose": True,
     "exports": {
         "everything": {
             "source": ["/.exports/*"],
@@ -225,7 +226,6 @@ DEFAULT_TEMPLATES = {
 }"""
 }
 
-
 class PramaanaError(Exception):
     pass
 
@@ -272,7 +272,9 @@ class Pramaana:
             return DEFAULT_CONFIG
 
         with open(self.config_file) as f:
-            return json.load(f)
+            loaded_config: Dict = json.load(f)
+        
+        return DEFAULT_CONFIG | loaded_config
 
     def _save_config(self):
         """Save current configuration to file"""
@@ -487,13 +489,15 @@ class Pramaana:
         for bib_file in self.refs_dir.rglob(f"*.{self.config['storage_format']}"):
             rel_path = str(bib_file.relative_to(self.refs_dir))
             if not spec.match_file(rel_path):
-                print(f"Including file: {bib_file}")
+                if self.config["verbose"]:
+                    print(f"Including file: {bib_file}")
                 with open(bib_file) as f:
                     content = f.read().strip()
                     if content:
                         all_refs.append(content)
             else:
-                print(f"Excluding file: {bib_file}")
+                if self.config["verbose"]:
+                    print(f"Excluding file: {bib_file}")
 
         print(f"Writing {len(all_refs)} references to {dest_path}")
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
