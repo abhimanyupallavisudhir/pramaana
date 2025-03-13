@@ -363,8 +363,22 @@ class Pramaana:
         if attachment_path is None:
             return  # No attachment requested
 
-        final_path = attachment_path
-        if attachment_path == "":  # Empty string means use latest from watch dir
+        # Helper function to handle a single file
+        def process_single_file(src_path: str, ref_dir: Path):
+            dest = ref_dir / os.path.basename(src_path)
+            if self.config["attachment_mode"] == "cp":
+                shutil.copy2(src_path, dest)
+            elif self.config["attachment_mode"] == "mv":
+                shutil.move(src_path, dest)
+            elif self.config["attachment_mode"] == "ln":
+                os.link(src_path, dest)
+            else:
+                raise PramaanaError(
+                    f"Invalid attachment mode: {self.config['attachment_mode']}"
+                )
+
+        # Handle empty string or number
+        if attachment_path == "" or attachment_path.isdigit():
             watch_dir = Path(os.path.expanduser(self.config["attachment_watch_dir"]))
             if not watch_dir.exists():
                 raise PramaanaError(f"Watch directory not found: {watch_dir}")
@@ -375,25 +389,25 @@ class Pramaana:
             if not files:
                 raise PramaanaError(f"No files found in watch directory: {watch_dir}")
 
-            final_path = str(files[0])
-            print(f"Using latest file for attachment: {final_path}")
+            # Determine how many files to attach
+            n_files = 1 if attachment_path == "" else int(attachment_path)
+            if n_files > len(files):
+                print(f"Warning: Only {len(files)} files available, using all of them")
+                n_files = len(files)
 
-        final_path = os.path.expanduser(final_path)
+            # Process the files
+            for i in range(n_files):
+                final_path = str(files[i])
+                print(f"Attaching file {i+1}/{n_files}: {final_path}")
+                process_single_file(final_path, ref_dir)
+            return
+
+        # Handle specific file path
+        final_path = os.path.expanduser(attachment_path)
         if not os.path.exists(final_path):
             raise PramaanaError(f"Attachment not found: {final_path}")
 
-        dest = ref_dir / os.path.basename(final_path)
-
-        if self.config["attachment_mode"] == "cp":
-            shutil.copy2(final_path, dest)
-        elif self.config["attachment_mode"] == "mv":
-            shutil.move(final_path, dest)
-        elif self.config["attachment_mode"] == "ln":
-            os.link(final_path, dest)
-        else:
-            raise PramaanaError(
-                f"Invalid attachment mode: {self.config['attachment_mode']}"
-            )
+        process_single_file(final_path, ref_dir)
 
     def _load_templates(self) -> Dict[str, str]:
         """Load BibTeX templates from config directory"""
