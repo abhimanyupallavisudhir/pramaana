@@ -363,19 +363,46 @@ class Pramaana:
         if attachment_path is None:
             return  # No attachment requested
 
-        # Helper function to handle a single file
-        def process_single_file(src_path: str, ref_dir: Path):
-            dest = ref_dir / os.path.basename(src_path)
-            if self.config["attachment_mode"] == "cp":
-                shutil.copy2(src_path, dest)
-            elif self.config["attachment_mode"] == "mv":
-                shutil.move(src_path, dest)
-            elif self.config["attachment_mode"] == "ln":
-                os.link(src_path, dest)
-            else:
-                raise PramaanaError(
-                    f"Invalid attachment mode: {self.config['attachment_mode']}"
-                )
+        # Helper function to handle a single item (file or directory)
+        def process_single_item(src_path: str, ref_dir: Path):
+            src_path = Path(src_path)
+            dest = ref_dir / src_path.name
+
+            if not src_path.exists():
+                raise PramaanaError(f"Path not found: {src_path}")
+
+            if src_path.is_file():
+                if self.config["attachment_mode"] == "cp":
+                    shutil.copy2(src_path, dest)
+                elif self.config["attachment_mode"] == "mv":
+                    shutil.move(src_path, dest)
+                elif self.config["attachment_mode"] == "ln":
+                    os.link(src_path, dest)
+                else:
+                    raise PramaanaError(
+                        f"Invalid attachment mode: {self.config['attachment_mode']}"
+                    )
+            elif src_path.is_dir():
+                # Add safety checks
+                total_size = sum(f.stat().st_size for f in src_path.rglob('*') if f.is_file())
+                if total_size > 500 * 1024 * 1024:  # 500MB limit
+                    response = input(f"Warning: Directory {src_path} is large ({total_size/1024/1024:.1f}MB). Proceed? [y/N] ")
+                    if response.lower() != 'y':
+                        print("Skipping directory...")
+                        return
+
+                if self.config["attachment_mode"] == "mv":
+                    shutil.move(src_path, dest)
+                else:
+                    # For cp and ln, use copytree with appropriate settings
+                    shutil.copytree(
+                        src_path, 
+                        dest,
+                        symlinks=False,  # Don't follow symlinks
+                        dirs_exist_ok=True,  # Allow merging with existing dirs
+                        copy_function=os.link if self.config["attachment_mode"] == "ln" else shutil.copy2
+                    )
+                print(f"Attached directory: {src_path}")
 
         # Handle empty string or number
         if attachment_path == "" or attachment_path.isdigit():
@@ -383,31 +410,30 @@ class Pramaana:
             if not watch_dir.exists():
                 raise PramaanaError(f"Watch directory not found: {watch_dir}")
 
-            files = sorted(
-                watch_dir.glob("*"), key=lambda x: x.stat().st_mtime, reverse=True
+            # Get both files and directories
+            items = sorted(
+                watch_dir.iterdir(),
+                key=lambda x: x.stat().st_mtime,
+                reverse=True
             )
-            if not files:
-                raise PramaanaError(f"No files found in watch directory: {watch_dir}")
+            if not items:
+                raise PramaanaError(f"No items found in watch directory: {watch_dir}")
 
-            # Determine how many files to attach
-            n_files = 1 if attachment_path == "" else int(attachment_path)
-            if n_files > len(files):
-                print(f"Warning: Only {len(files)} files available, using all of them")
-                n_files = len(files)
+            # Determine how many items to attach
+            n_items = 1 if attachment_path == "" else int(attachment_path)
+            if n_items > len(items):
+                print(f"Warning: Only {len(items)} items available, using all of them")
+                n_items = len(items)
 
-            # Process the files
-            for i in range(n_files):
-                final_path = str(files[i])
-                print(f"Attaching file {i+1}/{n_files}: {final_path}")
-                process_single_file(final_path, ref_dir)
+            # Process the items
+            for i in range(n_items):
+                item_path = str(items[i])
+                print(f"Attaching item {i+1}/{n_items}: {item_path}")
+                process_single_item(item_path, ref_dir)
             return
 
-        # Handle specific file path
-        final_path = os.path.expanduser(attachment_path)
-        if not os.path.exists(final_path):
-            raise PramaanaError(f"Attachment not found: {final_path}")
-
-        process_single_file(final_path, ref_dir)
+        # Handle specific path
+        process_single_item(attachment_path, ref_dir)
 
     def _load_templates(self) -> Dict[str, str]:
         """Load BibTeX templates from config directory"""
