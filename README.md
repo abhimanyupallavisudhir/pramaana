@@ -42,6 +42,8 @@ Main commands:
 #    items in `~/Downloads`
 pramaana new cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
 pramaana new cs/ai_books/sutton_barto --template=book --attach paper.pdf
+pramaana new cs/ai_books/sutton_barto --attach
+pramaana new cs/ai_books/sutton_barto --attach 3
 
 # Update a reference:
 pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=GDvW4MNMQ2wC --attach paper.pdf
