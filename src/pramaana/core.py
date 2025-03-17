@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import subprocess
 import shutil
@@ -42,7 +43,6 @@ DEFAULT_TEMPLATES = {
     issn = {},
     publisher = {}
 }""",
-
     "book": r"""@book{key,
     title = {Enter title},
     author = {Author LastName, FirstName and Author2 LastName, FirstName},
@@ -60,7 +60,6 @@ DEFAULT_TEMPLATES = {
     note = {},
     language = {english}
 }""",
-
     "inproceedings": r"""@inproceedings{key,
     title = {Enter title},
     author = {Author1, FirstName and Author2, FirstName},
@@ -78,7 +77,6 @@ DEFAULT_TEMPLATES = {
     keywords = {keyword1, keyword2, keyword3},
     note = {}
 }""",
-
     "techreport": r"""@techreport{key,
     title = {Enter title},
     author = {Author1, FirstName and Author2, FirstName},
@@ -94,7 +92,6 @@ DEFAULT_TEMPLATES = {
     note = {},
     doi = {}
 }""",
-
     "thesis": r"""@thesis{key,
     title = {Enter title},
     author = {Author LastName, FirstName},
@@ -111,7 +108,6 @@ DEFAULT_TEMPLATES = {
     department = {Department Name},
     note = {}
 }""",
-
     "web": r"""@misc{key,
     title = {Page or Resource Title},
     author = {Author or Organization Name},
@@ -127,7 +123,6 @@ DEFAULT_TEMPLATES = {
     archiveurl = {},  % Web archive URL if available
     archivedate = {}  % Date of archive snapshot
 }""",
-
     "software": r"""@software{key,
     title = {Software Name},
     author = {Author1, FirstName and Author2, FirstName},
@@ -146,7 +141,6 @@ DEFAULT_TEMPLATES = {
     requirements = {},
     note = {}
 }""",
-
     "dataset": r"""@misc{key,
     title = {Dataset Name},
     author = {Creator1, FirstName and Creator2, FirstName},
@@ -167,7 +161,6 @@ DEFAULT_TEMPLATES = {
     spatialCoverage = {},   % Geographic coverage if applicable
     methodology = {}        % Brief description of data collection methodology
 }""",
-
     "preprint": r"""@article{key,
     title = {Enter title},
     author = {Author1 LastName and Author2 LastName},
@@ -184,7 +177,6 @@ DEFAULT_TEMPLATES = {
     institution = {}, % Author affiliation
     funding = {}      % Funding acknowledgment
 }""",
-
     "patent": r"""@patent{key,
     title = {Patent Title},
     author = {Inventor1 Name and Inventor2 Name},
@@ -204,7 +196,6 @@ DEFAULT_TEMPLATES = {
     issue_date = {},  % Full issue date if granted
     priority_date = {}
 }""",
-
     "video": r"""@misc{key,
     title = {Video Title},
     author = {Creator Name or Organization},
@@ -223,8 +214,9 @@ DEFAULT_TEMPLATES = {
     lastaccessed = {\today},
     quality = {},     % e.g., 1080p, 4K
     series = {}       % If part of a series
-}"""
+}""",
 }
+
 
 class PramaanaError(Exception):
     pass
@@ -273,7 +265,7 @@ class Pramaana:
 
         with open(self.config_file) as f:
             loaded_config: Dict = json.load(f)
-        
+
         return DEFAULT_CONFIG | loaded_config
 
     def _save_config(self):
@@ -384,10 +376,14 @@ class Pramaana:
                     )
             elif src_path.is_dir():
                 # Add safety checks
-                total_size = sum(f.stat().st_size for f in src_path.rglob('*') if f.is_file())
+                total_size = sum(
+                    f.stat().st_size for f in src_path.rglob("*") if f.is_file()
+                )
                 if total_size > 500 * 1024 * 1024:  # 500MB limit
-                    response = input(f"Warning: Directory {src_path} is large ({total_size/1024/1024:.1f}MB). Proceed? [y/N] ")
-                    if response.lower() != 'y':
+                    response = input(
+                        f"Warning: Directory {src_path} is large ({total_size / 1024 / 1024:.1f}MB). Proceed? [y/N] "
+                    )
+                    if response.lower() != "y":
                         print("Skipping directory...")
                         return
 
@@ -396,11 +392,13 @@ class Pramaana:
                 else:
                     # For cp and ln, use copytree with appropriate settings
                     shutil.copytree(
-                        src_path, 
+                        src_path,
                         dest,
                         symlinks=False,  # Don't follow symlinks
                         dirs_exist_ok=True,  # Allow merging with existing dirs
-                        copy_function=os.link if self.config["attachment_mode"] == "ln" else shutil.copy2
+                        copy_function=os.link
+                        if self.config["attachment_mode"] == "ln"
+                        else shutil.copy2,
                     )
                 print(f"Attached directory: {src_path}")
 
@@ -412,9 +410,7 @@ class Pramaana:
 
             # Get both files and directories
             items = sorted(
-                watch_dir.iterdir(),
-                key=lambda x: x.stat().st_mtime,
-                reverse=True
+                watch_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True
             )
             if not items:
                 raise PramaanaError(f"No items found in watch directory: {watch_dir}")
@@ -428,7 +424,7 @@ class Pramaana:
             # Process the items
             for i in range(n_items):
                 item_path = str(items[i])
-                print(f"Attaching item {i+1}/{n_items}: {item_path}")
+                print(f"Attaching item {i + 1}/{n_items}: {item_path}")
                 process_single_item(item_path, ref_dir)
             return
 
@@ -439,7 +435,7 @@ class Pramaana:
         """Load BibTeX templates from config directory"""
         templates = DEFAULT_TEMPLATES.copy()
         template_dir = self.config_dir / "templates"
-        
+
         if not template_dir.exists():
             # Create template directory and save default templates
             template_dir.mkdir(exist_ok=True)
@@ -452,24 +448,23 @@ class Pramaana:
                 name = template_file.stem
                 with open(template_file) as f:
                     templates[name] = f.read()
-        
+
         return templates
 
     def _get_template(self, template_name: Optional[str] = None) -> str:
         """Get a BibTeX template by name"""
         templates = self._load_templates()
-        
+
         if template_name is None:
             return templates["article"]  # Default template
-            
+
         if template_name not in templates:
             raise PramaanaError(
                 f"Template '{template_name}' not found. Available templates: "
                 f"{', '.join(sorted(templates.keys()))}"
             )
-        
-        return templates[template_name]
 
+        return templates[template_name]
 
     def new(
         self,
@@ -498,7 +493,15 @@ class Pramaana:
             with tempfile.NamedTemporaryFile(suffix=".bib", mode="w+") as tf:
                 tf.write(self._get_template(template))
                 tf.flush()
-                subprocess.call([os.environ.get("EDITOR", "vim"), tf.name])
+                subprocess.call(
+                    [
+                        os.environ.get(
+                            "EDITOR",
+                            ("notepad.exe" if sys.platform == "win32" else "vim"),
+                        ),
+                        tf.name,
+                    ]
+                )
                 tf.seek(0)
                 bibtex_content = tf.read()
 
@@ -637,28 +640,37 @@ class Pramaana:
 
         return results
 
-    def grep(self, pattern: str, paths: Optional[List[str]] = None, grep_args: List[str] = None):
+    def grep(
+        self,
+        pattern: str,
+        paths: Optional[List[str]] = None,
+        grep_args: List[str] = None,
+    ):
         """Search references using grep
-        
+
         Args:
             pattern: Search pattern
             paths: Optional list of paths to search in (relative to refs_dir)
             grep_args: Additional arguments to pass to grep
         """
         # Build grep command with default options for color and filename output
-        cmd = ['grep', '--color=auto', '-H']  # -H forces filename output even with single file
-        
+        cmd = [
+            "grep",
+            "--color=auto",
+            "-H",
+        ]  # -H forces filename output even with single file
+
         # Check if --include is specified in grep_args
         grep_args = grep_args or []
-        has_include = any(arg.startswith('--include=') for arg in grep_args)
-        
+        has_include = any(arg.startswith("--include=") for arg in grep_args)
+
         # If no include pattern specified, add our default
         if not has_include:
-            cmd.append(f'--include=*.{self.config["storage_format"]}')
-        
+            cmd.append(f"--include=*.{self.config['storage_format']}")
+
         cmd.extend(grep_args)
         cmd.append(pattern)
-        
+
         # Handle search paths
         if paths:
             search_paths = []
@@ -671,95 +683,106 @@ class Pramaana:
         else:
             # Use rglob with * to get all files, let grep handle filtering
             search_paths = self.refs_dir.rglob("*")
-        
+
         # Add files to search
         file_list = [str(f) for f in search_paths if f.is_file()]
         if not file_list:
             print("No files to search")
             return
-        
+
         cmd.extend(file_list)
-        
+
         try:
             # Use env to ensure color output even when piped
             env = os.environ.copy()
-            env['GREP_COLORS'] = 'mt=01;31:fn=35:ln=32:se=36'  # Standard grep colors
+            env["GREP_COLORS"] = "mt=01;31:fn=35:ln=32:se=36"  # Standard grep colors
             subprocess.run(cmd, check=False, env=env)
         except subprocess.CalledProcessError as e:
             if e.returncode != 1:  # 1 means no matches, which is fine
                 raise PramaanaError(f"grep command failed: {e}")
 
-    def import_zotero(self, bib_file: str, via: str = 'ln'):
+    def import_zotero(self, bib_file: str, via: str = "ln"):
         """Import references from BetterBibTeX export
-        
+
         Args:
             bib_file: Path to the BetterBibTeX export file
             via: How to handle attachments - 'ln' (hardlink), 'cp' (copy), or 'mv' (move)
         """
         import re
-        if via not in ['ln', 'cp', 'mv']:
+
+        if via not in ["ln", "cp", "mv"]:
             raise PramaanaError(f"Invalid --via option: {via}")
-            
+
         bib_file = os.path.expanduser(bib_file)
         if not os.path.exists(bib_file):
             raise PramaanaError(f"BibTeX file not found: {bib_file}")
-        
+
         # Parse BibTeX file
         with open(bib_file) as f:
             bib_data = bibtexparser.loads(f.read())
-        
+
         for entry in bib_data.entries:
             try:
                 # Get collection path and citation key
-                collection = entry.get('collection', '').strip('/')  # Remove leading/trailing slashes
+                collection = entry.get("collection", "").strip(
+                    "/"
+                )  # Remove leading/trailing slashes
                 # Remove any BibTeX escaping (backslash followed by any character)
-                collection = re.sub(r'\\(.)', r'\1', collection)
+                collection = re.sub(r"\\(.)", r"\1", collection)
                 if not collection:
-                    collection = 'uncategorized'
-                citation_key = entry.get('ID')
+                    collection = "uncategorized"
+                citation_key = entry.get("ID")
                 if not citation_key:
-                    print(f"Warning: Entry has no citation key, skipping: {entry.get('title', 'Unknown')}")
+                    print(
+                        f"Warning: Entry has no citation key, skipping: {entry.get('title', 'Unknown')}"
+                    )
                     continue
-                    
+
                 # Create directory for this reference
                 ref_dir = self.refs_dir / collection / citation_key
                 ref_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 # Save BibTeX
-                with open(ref_dir / f"reference.{self.config['storage_format']}", 'w') as f:
+                with open(
+                    ref_dir / f"reference.{self.config['storage_format']}", "w"
+                ) as f:
                     # Create a new database with just this entry
                     db = bibtexparser.bibdatabase.BibDatabase()
                     db.entries = [entry]
                     f.write(bibtexparser.dumps(db))
-                
+
                 # Handle attachments
-                files = entry.get('file', '').split(';')
+                files = entry.get("file", "").split(";")
                 for file_path in files:
                     if not file_path:
                         continue
-                        
+
                     file_path = os.path.expanduser(file_path)
                     if not os.path.exists(file_path):
                         print(f"Warning: Attachment not found: {file_path}")
                         continue
-                    
+
                     dest = ref_dir / os.path.basename(file_path)
-                    if via == 'ln':
+                    if via == "ln":
                         try:
                             os.link(file_path, dest)
                         except OSError as e:
-                            print(f"Warning: Could not create hardlink for {file_path}: {e}")
+                            print(
+                                f"Warning: Could not create hardlink for {file_path}: {e}"
+                            )
                             print("Falling back to copy...")
                             shutil.copy2(file_path, dest)
-                    elif via == 'cp':
+                    elif via == "cp":
                         shutil.copy2(file_path, dest)
                     else:  # mv
                         shutil.move(file_path, dest)
-                        
+
                 print(f"Imported: {collection}/{citation_key}")
-                
+
             except Exception as e:
-                print(f"Warning: Failed to import entry {entry.get('ID', 'Unknown')}: {str(e)}")
+                print(
+                    f"Warning: Failed to import entry {entry.get('ID', 'Unknown')}: {str(e)}"
+                )
 
     def list_refs(self, subdir: Optional[str] = None, ls_args: List[str] = None):
         """List references in tree structure"""
@@ -867,6 +890,15 @@ class Pramaana:
             with open(target) as f:
                 return f.read()
 
+    def _get_opener_command():
+        """Get the appropriate file opener command for the current platform"""
+        if sys.platform == "darwin":
+            return ["open"]
+        elif sys.platform == "win32":
+            return ["start", ""]  # Empty string is required for Windows
+        else:
+            return ["xdg-open"]  # Linux/Unix
+
     def open(self, path: Optional[str] = None, open_args: List[str] = None):
         """Open with optional xdg-open arguments
 
@@ -881,10 +913,15 @@ class Pramaana:
         else:
             full_path = self.refs_dir
 
-        cmd = ["xdg-open"] + (open_args or []) + [str(full_path)]
+        opener = self._get_opener_command()
+        cmd = opener + (open_args or []) + [str(full_path)]
+
         try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
+            if sys.platform == "win32":
+                os.startfile(str(full_path))  # Windows-specific approach
+            else:
+                subprocess.run(cmd, check=True)
+        except Exception as e:
             raise PramaanaError(
                 f"Failed to open {full_path}: {e}\n{traceback.format_exc()}"
             )
