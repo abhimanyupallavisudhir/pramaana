@@ -193,6 +193,8 @@ pip install -e ".[dev]"
 
 ## TODO
 
+- [ ] [nicer more interactive dropdown like visualization for ls -- maybe some kind of terminal file manager](https://github.com/abhimanyupallavisudhir/pramaana/issues/3)
+- [ ] [Items in multiple collections in Zotero should ideally be imported as hardlinks to the same file(s)](https://github.com/abhimanyupallavisudhir/pramaana/issues/1)
 - [x] make the `.pramaana` references folder configurable
 - [x] make sure `pramaana edit` works as intended
 - [x] `pramaana export id` to run only some exports
