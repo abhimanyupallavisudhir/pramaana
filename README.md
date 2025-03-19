@@ -53,6 +53,9 @@ pramaana edit cs/ai_books/sutton_barto --from https://books.google.com/books?id=
 # but if you change anything outside the pramana command line, you'll want to run it afterward
 pramaana export id1 id2
 
+# Find reference
+pramaana find "sutton" -type f
+
 # Search for text
 pramaana grep "sutton" cs/ # supports all grep options, but must be given at end
 pramaana grep "sutton" cs/ --include="*.bib" # to only search .bib files (rather than e.g. pdf)
