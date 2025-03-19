@@ -6,7 +6,7 @@ _pramaana_complete() {
     cmd="${COMP_WORDS[1]}"
 
     # List of all commands
-    local commands="new edit find import export ls rm trash show open"
+    local commands="new edit find import export ls mv cp ln rm trash show open"
 
     # If we're completing the command name (first argument)
     if [ $COMP_CWORD -eq 1 ]; then
