@@ -49,7 +49,7 @@ if template_dir.exists():
                 '--from:URL or file:_files' \
                 '--attach:attachment:_files'
             ;;
-        ls|rm|trash|show|open|grep|mv|cp|ln|abs)
+        ls|rm|trash|show|open|find|grep|mv|cp|ln|abs)
             _path_files -W $data_dir
             ;;
         import)

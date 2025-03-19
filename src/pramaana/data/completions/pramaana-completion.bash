@@ -54,7 +54,7 @@ print(" ".join(templates))
 
     # Handle command-specific completions
     case "${cmd}" in
-        ls|rm|trash|show|open|edit|new|grep|mv|cp|ln|abs)
+        ls|rm|trash|show|open|edit|new|find|grep|mv|cp|ln|abs)
             # Complete with paths from pramaana data directory
             local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
             COMPREPLY=( $(printf "%s\n" "${paths}") )
