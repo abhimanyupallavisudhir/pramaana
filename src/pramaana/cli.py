@@ -89,7 +89,7 @@ def main():
 
     # abs command
     abs_parser = subparsers.add_parser('abs', help='Get absolute path')
-    abs_parser.add_argument('path', help='path within pramaana data directory')
+    abs_parser.add_argument('path', nargs='?', help='path within pramaana data directory')
 
     args = parser.parse_args()
     

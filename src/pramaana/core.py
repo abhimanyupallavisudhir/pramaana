@@ -647,7 +647,7 @@ class Pramaana:
             cmd.extend(find_args)
         
         subprocess.run(cmd, check=False)
-        
+
     def grep(
         self,
         pattern: str,
@@ -1000,8 +1000,10 @@ class Pramaana:
         # Process exports after linking
         self.export()
 
-    def abs(self, path: str):
+    def abs(self, path: Optional[str] = None):
         """Get the absolute path of a reference"""
+        if not path:
+            return self.refs_dir.resolve()
         full_path = self.refs_dir / path
         if not full_path.exists():
             print(f"Warning, path not found: {path}")
