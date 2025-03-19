@@ -26,6 +26,7 @@ def main():
     # find command
     find_parser = subparsers.add_parser('find', help='Search for references')
     find_parser.add_argument('query', help='Search query')
+    find_parser.add_argument('find_args', nargs=argparse.REMAINDER, help='Additional arguments for find')
 
     # grep command
     grep_parser = subparsers.add_parser('grep', help='Search references using grep')
@@ -129,15 +130,7 @@ def main():
                 print(f"Updated reference: {args.path}")
                 
         elif args.command == 'find':
-            results = pramaana.find(args.query)
-            if not results:
-                print("No matches found")
-            else:
-                for result in results:
-                    print(f"\nReference: {result['path']}")
-                    print(f"File: {result['file']}")
-                    print("-" * 40)
-                    print(result['content'][:200] + "..." if len(result['content']) > 200 else result['content'])
+            pramaana.find(args.query, args.find_args)
 
         elif args.command == 'grep':
             pramaana.grep(args.pattern, args.paths, args.grep_args)

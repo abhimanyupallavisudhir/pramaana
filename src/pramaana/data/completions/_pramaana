@@ -5,7 +5,7 @@ _pramaana() {
     commands=(
         'new:Create new reference'
         'edit:Edit existing reference'
-        'find:Search for references'
+        'find:Find references'
         'grep:Search for references'
         'import:Import from Zotero'
         'export:Run exports'

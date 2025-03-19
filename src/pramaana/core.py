@@ -622,24 +622,32 @@ class Pramaana:
         # Process exports
         self.export()
 
-    def find(self, query: str) -> List[Dict[str, Any]]:
-        """Search for references matching query"""
-        results = []
-        query = query.lower()
-
-        for bib_file in self.config_dir.rglob(f"*.{self.config['storage_format']}"):
-            with open(bib_file) as f:
-                content = f.read()
-
-            # Simple text search for now - could be enhanced with proper BibTeX parsing
-            if query in content.lower():
-                rel_path = bib_file.parent.relative_to(self.config_dir)
-                results.append(
-                    {"path": str(rel_path), "content": content, "file": str(bib_file)}
-                )
-
-        return results
-
+    def find(self, query: str, find_args: List[str]=None) -> List[Dict[str, Any]]:
+        """Search for references by filename or directory path using find
+        
+        Args:
+            query: Search pattern (will be used with -path option)
+            find_args: Additional arguments to pass to find command
+            
+        Returns:
+            List of found references with their paths and metadata
+        """
+        # Build find command
+        cmd = ["find", str(self.refs_dir)]
+        
+        # Add path pattern if query provided
+        if query:
+            # Convert simple text to path pattern
+            if not any(c in query for c in ["*", "?", "[", "]"]):
+                query = f"*{query}*"  # Make it a substring match
+            cmd.extend(["-path", query])
+        
+        # Add any additional find arguments
+        if find_args:
+            cmd.extend(find_args)
+        
+        subprocess.run(cmd, check=False)
+        
     def grep(
         self,
         pattern: str,
