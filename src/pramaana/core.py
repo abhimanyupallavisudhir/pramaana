@@ -898,6 +898,7 @@ class Pramaana:
             with open(target) as f:
                 return f.read()
 
+    @staticmethod
     def _get_opener_command():
         """Get the appropriate file opener command for the current platform"""
         if sys.platform == "darwin":

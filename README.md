@@ -73,6 +73,7 @@ pramaana cp path1 path2
 pramaana ln path1 path2 -s
 pramaana show cs/ai_books/sutton_barto/ # shows bibliographic content
 pramaana open /path/to/file/or/subdir # opens file or directory in default application; omit arguments to just open the `pramaana_path` folder
+pramaana abs /path/to/file/or/subdir # returns absolute path of file or directory
 ```
 
 ## Configuration
