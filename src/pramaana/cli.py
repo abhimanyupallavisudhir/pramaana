@@ -86,6 +86,10 @@ def main():
     ln_parser.add_argument('dest', help='Destination path')
     ln_parser.add_argument('ln_args', nargs=argparse.REMAINDER, help='Additional arguments for ln')
 
+    # abs command
+    abs_parser = subparsers.add_parser('abs', help='Get absolute path')
+    abs_parser.add_argument('path', help='path within pramaana data directory')
+
     args = parser.parse_args()
     
     if not args.command:
@@ -192,6 +196,9 @@ def main():
         elif args.command == 'ln':
             pramaana.link(args.source, args.dest, args.ln_args)
             print(f"Linked {args.source} to {args.dest}")
+        
+        elif args.command == 'abs':
+            print(pramaana.abs(args.path))
 
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)

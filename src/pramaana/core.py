@@ -991,3 +991,10 @@ class Pramaana:
 
         # Process exports after linking
         self.export()
+
+    def abs(self, path: str):
+        """Get the absolute path of a reference"""
+        full_path = self.refs_dir / path
+        if not full_path.exists():
+            print(f"Warning, path not found: {path}")
+        return full_path.resolve()

@@ -6,6 +6,7 @@ _pramaana() {
         'new:Create new reference'
         'edit:Edit existing reference'
         'find:Search for references'
+        'grep:Search for references'
         'import:Import from Zotero'
         'export:Run exports'
         'ls:List references'
@@ -16,6 +17,7 @@ _pramaana() {
         'trash:Move to trash'
         'show:Show contents'
         'open:Open with default application'
+        'abs:Output absolute path'
     )
 
     local data_dir
@@ -47,7 +49,7 @@ if template_dir.exists():
                 '--from:URL or file:_files' \
                 '--attach:attachment:_files'
             ;;
-        ls|rm|trash|show|open|grep|mv|cp|ln)
+        ls|rm|trash|show|open|grep|mv|cp|ln|abs)
             _path_files -W $data_dir
             ;;
         import)
