@@ -489,9 +489,21 @@ class Pramaana:
         elif bibtex:
             bibtex_content = bibtex
         else:
-            # Open editor with template
+            import re
+            # Get template and replace the key with directory name
+            template_content = self._get_template(template)
+            # Use the last part of the path as the key
+            key = ref_dir.stem
+            # Replace the default key with the directory name
+            bibtex_content = re.sub(
+                r'@(\w+){[^,]*,',  # Matches @type{anykey,
+                r'@\1{' + key,  # Replaces with @type{ourkey,
+                template_content
+            )
+            
+            # Open editor with modified template
             with tempfile.NamedTemporaryFile(suffix=".bib", mode="w+") as tf:
-                tf.write(self._get_template(template))
+                tf.write(bibtex_content)
                 tf.flush()
                 subprocess.call(
                     [
