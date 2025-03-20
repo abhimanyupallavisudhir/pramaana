@@ -527,28 +527,46 @@ class Pramaana:
             pathspec.patterns.GitWildMatchPattern, export["source"]
         )
 
-        # Collect all references that match the patterns
+        # Track unique files by inode/file_id to handle hardlinks
+        seen_files = set()
         all_refs = []
+
         for bib_file in self.refs_dir.rglob(f"*.{self.config['storage_format']}"):
             rel_path = str(bib_file.relative_to(self.refs_dir))
             if not spec.match_file(rel_path):
-                if self.config["verbose"]:
-                    print(f"Including file: {bib_file}")
-                with open(bib_file) as f:
-                    content = f.read().strip()
-                    if content:
-                        all_refs.append(content)
+                # Get unique file identifier
+                if sys.platform == "win32":
+                    # On Windows, use a combination of volume number and file index
+                    file_id = str(os.stat(bib_file).st_file_attributes)
+                else:
+                    # On Unix-like systems, use device and inode number
+                    stat = os.stat(bib_file)
+                    file_id = f"{stat.st_dev}:{stat.st_ino}"
+
+                # Only process if we haven't seen this file before
+                if file_id not in seen_files:
+                    seen_files.add(file_id)
+                    if self.config["verbose"]:
+                        print(f"Including file: {bib_file}")
+                    with open(bib_file) as f:
+                        content = f.read().strip()
+                        if content:
+                            all_refs.append(content)
+                else:
+                    if self.config["verbose"]:
+                        print(f"Skipping hardlinked file: {bib_file}")
             else:
                 if self.config["verbose"]:
                     print(f"Excluding file: {bib_file}")
 
-        print(f"Writing {len(all_refs)} references to {dest_path}")
+        print(f"Writing {len(all_refs)} unique references to {dest_path}")
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         with open(dest_path, "w", encoding="utf-8") as f:
             content = "\n\n".join(all_refs)
             if content:
                 content += "\n"
             f.write(content)
+
 
     def export(self, export_names: Optional[List[str]] = None):
         """Run export processing manually
