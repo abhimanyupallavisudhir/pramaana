@@ -1027,3 +1027,14 @@ class Pramaana:
         if not full_path.exists():
             print(f"Warning, path not found: {path}")
         return full_path.resolve()
+    
+    def rel(self, path: Optional[str] = None):
+        """If path starts with refs_dir, return relative path"""
+        if not path:
+            return self.refs_dir
+        full_path = Path(path)
+        if not full_path.is_absolute():
+            full_path = self.refs_dir / full_path
+        if not full_path.exists():
+            print(f"Warning, path not found: {path}")
+        return full_path.relative_to(self.refs_dir)

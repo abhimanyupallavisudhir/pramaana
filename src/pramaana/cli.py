@@ -91,6 +91,10 @@ def main():
     abs_parser = subparsers.add_parser('abs', help='Get absolute path')
     abs_parser.add_argument('path', nargs='?', help='path within pramaana data directory')
 
+    # rel command
+    rel_parser = subparsers.add_parser('rel', help='Get relative path')
+    rel_parser.add_argument('path', nargs='?', help='absolute path within pramaana data directory')
+
     args = parser.parse_args()
     
     if not args.command:
@@ -192,6 +196,9 @@ def main():
         
         elif args.command == 'abs':
             print(pramaana.abs(args.path))
+
+        elif args.command == 'rel':
+            print(pramaana.rel(args.path))
 
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
