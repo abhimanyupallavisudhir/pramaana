@@ -497,7 +497,7 @@ class Pramaana:
             # Replace the default key with the directory name
             bibtex_content = re.sub(
                 r'@(\w+){[^,]*,',  # Matches @type{anykey,
-                r'@\1{' + key,  # Replaces with @type{ourkey,
+                r'@\1{' + key + ',',  # Replaces with @type{ourkey,
                 template_content
             )
             
