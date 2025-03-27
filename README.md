@@ -67,6 +67,9 @@ pramaana import /path/to/special_bbt_export.bib
 # Cleanup operations
 # For now this just does:
 # 1) change all citation keys to match name of folder containing bib file
+# --recursive/-r should usually be turned on, unless you want to rename just one reference
+# --dry-run to just show what changes would be made
+pramaana clean cs/ -r --dry-run
 ```
 
 Basic commands (all of these support the basic options supported by the commands they wrap, e.g. `rm -rf`, but the options need to be added at the *end*):
