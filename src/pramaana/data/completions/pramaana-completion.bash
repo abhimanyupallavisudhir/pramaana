@@ -54,7 +54,27 @@ print(" ".join(templates))
 
     # Handle command-specific completions
     case "${cmd}" in
-        ls|rm|trash|show|open|edit|new|find|grep|mv|cp|ln|abs|rel)
+        show)
+            if [ "$prev" = "show" ] || [[ "$prev" =~ ^(-r|--recursive)$ ]]; then
+                # Complete with paths from pramaana data directory
+                local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
+                COMPREPLY=( $(printf "%s\n" "${paths}") )
+            elif [[ "$cur" == -* ]]; then
+                # Show command options
+                COMPREPLY=( $(compgen -W "-r --recursive" -- "$cur") )
+            fi
+            ;;
+        clean)
+            if [ "$prev" = "clean" ] || [[ "$prev" =~ ^(-r|--recursive|--dry-run)$ ]]; then
+                # Complete with paths from pramaana data directory
+                local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
+                COMPREPLY=( $(printf "%s\n" "${paths}") )
+            elif [[ "$cur" == -* ]]; then
+                # Clean command options
+                COMPREPLY=( $(compgen -W "-r --recursive --dry-run" -- "$cur") )
+            fi
+            ;;
+        ls|rm|trash|open|edit|new|find|grep|mv|cp|ln|abs|rel)
             # Complete with paths from pramaana data directory
             local paths=$(cd "$data_dir" && compgen -f -- "${cur}")
             COMPREPLY=( $(printf "%s\n" "${paths}") )

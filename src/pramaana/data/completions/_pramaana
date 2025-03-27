@@ -51,7 +51,21 @@ if template_dir.exists():
                 '--from:URL or file:_files' \
                 '--attach:attachment:_files'
             ;;
-        ls|rm|trash|show|open|find|grep|mv|cp|ln|abs|rel)
+        show)
+            _arguments \
+                '1: :->command' \
+                '2:path:_path_files -W $data_dir' \
+                '(-r --recursive)'{-r,--recursive}'[Show recursively]' \
+                '*::show_args:'
+            ;;
+        clean)
+            _arguments \
+                '1: :->command' \
+                '2::path:_path_files -W $data_dir' \
+                '(-r --recursive)'{-r,--recursive}'[Clean recursively]' \
+                '(--dry-run)--dry-run[Show what would be done without making changes]'
+            ;;
+        ls|rm|trash|open|find|grep|mv|cp|ln|abs|rel)
             _path_files -W $data_dir
             ;;
         import)
