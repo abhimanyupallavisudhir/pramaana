@@ -62,7 +62,10 @@ def main():
     # show command (similar to cat)
     show_parser = subparsers.add_parser('show', help='Show contents of a file or directory')
     show_parser.add_argument('path', help='Path to show')
-    show_parser.add_argument('show_args', nargs=argparse.REMAINDER, help='Additional arguments for cat')
+    show_parser.add_argument('-r', '--recursive', action='store_true', 
+                            help='Recursively show all bibliography files')
+    show_parser.add_argument('show_args', nargs=argparse.REMAINDER, 
+                            help='Additional arguments for cat')
 
     # open command
     open_parser = subparsers.add_parser('open', help='Open a file or directory')
@@ -173,9 +176,9 @@ def main():
 
         elif args.command == 'show':
             if args.show_args:
-                pramaana.show(args.path, args.show_args)
+                pramaana.show(args.path, args.show_args, recursive=args.recursive)
             else:
-                content = pramaana.show(args.path)
+                content = pramaana.show(args.path, recursive=args.recursive)
                 print(content)
 
         elif args.command == 'open':

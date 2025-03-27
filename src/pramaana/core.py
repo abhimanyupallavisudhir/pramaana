@@ -901,32 +901,70 @@ class Pramaana:
 
         self.export()
 
-    def show(self, path: str, show_args: List[str] = None):
-        """Show contents with optional cat arguments"""
+    def show(self, path: str, show_args: List[str] = None, recursive: bool = False):
+        """Show contents with optional cat arguments
+        
+        Args:
+            path: Path to show
+            show_args: Optional arguments for cat command
+            recursive: If True, recursively find and display all bibliography files
+        """
         full_path = self.refs_dir / path
         if not full_path.exists():
             raise PramaanaError(f"Path not found: {path}")
 
-        if full_path.is_file():
-            target = full_path
-        else:
-            # Find bibliography file
-            bib_files = list(full_path.glob(f"*.{self.config['storage_format']}"))
+        if recursive:
+            # Find all bibliography files recursively
+            bib_files = list(full_path.rglob(f"*.{self.config['storage_format']}"))
             if not bib_files:
-                raise PramaanaError(f"No bibliography file found in {path}")
-            target = bib_files[0]
-
-        if show_args:
-            cmd = ["cat"] + show_args + [str(target)]
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                raise PramaanaError(
-                    f"cat command failed: {e}\n{traceback.format_exc()}"
-                )
+                raise PramaanaError(f"No bibliography files found in {path} or its subdirectories")
+            
+            # Read and concatenate all files
+            content = []
+            for file in sorted(bib_files):  # Sort for consistent output
+                with open(file) as f:
+                    file_content = f.read().strip()
+                    if file_content:
+                        # Show the relative path as a header before each file's content
+                        rel_path = file.relative_to(self.refs_dir)
+                        content.append(f"# {rel_path}\n{file_content}")
+            
+            if show_args:
+                # Write to temporary file and use cat with args
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.bib', delete=False) as temp_file:
+                    temp_path = temp_file.name
+                    temp_file.write("\n\n".join(content))
+                
+                try:
+                    cmd = ["cat"] + show_args + [temp_path]
+                    subprocess.run(cmd, check=True)
+                finally:
+                    os.unlink(temp_path)  # Clean up temp file
+            else:
+                return "\n\n".join(content)
+        
         else:
-            with open(target) as f:
-                return f.read()
+            # Original non-recursive behavior
+            if full_path.is_file():
+                target = full_path
+            else:
+                # Find bibliography file
+                bib_files = list(full_path.glob(f"*.{self.config['storage_format']}"))
+                if not bib_files:
+                    raise PramaanaError(f"No bibliography file found in {path}")
+                target = bib_files[0]
+
+            if show_args:
+                cmd = ["cat"] + show_args + [str(target)]
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    raise PramaanaError(
+                        f"cat command failed: {e}\n{traceback.format_exc()}"
+                    )
+            else:
+                with open(target) as f:
+                    return f.read()
 
     @staticmethod
     def _get_opener_command():
