@@ -98,6 +98,15 @@ def main():
     rel_parser = subparsers.add_parser('rel', help='Get relative path')
     rel_parser.add_argument('path', nargs='?', help='absolute path within pramaana data directory')
 
+    # clean command
+    clean_parser = subparsers.add_parser('clean', help='Clean up BibTeX files')
+    clean_parser.add_argument('path', nargs='?', default="", 
+                            help='Path to clean (defaults to entire library)')
+    clean_parser.add_argument('-r', '--recursive', action='store_true', 
+                            help='Recursively clean all bibliography files')
+    clean_parser.add_argument('--dry-run', action='store_true', 
+                            help='Show what would be done without making changes')
+
     args = parser.parse_args()
     
     if not args.command:
@@ -202,6 +211,12 @@ def main():
 
         elif args.command == 'rel':
             print(pramaana.rel(args.path))
+
+        elif args.command == 'clean':
+            files = pramaana.clean(args.path, recursive=args.recursive, dry_run=args.dry_run)
+            if not args.dry_run:
+                count = len(files)
+                print(f"Cleaned {count} file{'s' if count != 1 else ''}")
 
     except PramaanaError as e:
         print(f"Error: {str(e)}", file=sys.stderr)

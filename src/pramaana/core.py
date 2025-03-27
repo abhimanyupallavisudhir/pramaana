@@ -1088,3 +1088,75 @@ class Pramaana:
         if not full_path.exists():
             print(f"Warning, path not found: {path}")
         return full_path.relative_to(self.refs_dir)
+
+    def clean(self, path: str = "", recursive: bool = False, dry_run: bool = False):
+        """Clean up BibTeX files by normalizing citation keys
+        
+        Args:
+            path: Path to start from (defaults to root directory)
+            recursive: Whether to search recursively
+            dry_run: If True, only show what would be done without making changes
+            
+        Returns:
+            List of files cleaned
+        """
+        import re
+        
+        full_path = self.refs_dir / path
+        if not full_path.exists():
+            raise PramaanaError(f"Path not found: {path}")
+        
+        # Find bibliography files
+        if recursive:
+            bib_files = list(full_path.rglob(f"*.{self.config['storage_format']}"))
+        else:
+            bib_files = list(full_path.glob(f"*.{self.config['storage_format']}"))
+            
+        if not bib_files:
+            print(f"No bibliography files found in {path}")
+            return []
+        
+        files_cleaned = []
+        
+        for bib_file in bib_files:
+            # Get the folder name to use as citation key
+            folder_name = bib_file.parent.name
+            
+            # Read the file
+            with open(bib_file) as f:
+                content = f.read()
+            
+            # Extract the current citation key
+            citation_key_match = re.search(r'@\w+{([^,]*),', content)
+            if not citation_key_match:
+                print(f"Warning: Could not find citation key in {bib_file}")
+                continue
+                
+            current_key = citation_key_match.group(1)
+            
+            if current_key == folder_name:
+                print(f"Key already matches folder name in {bib_file}")
+                continue
+                
+            # Replace the citation key
+            new_content = re.sub(
+                r'@(\w+){[^,]*,',  # Matches @type{anykey,
+                r'@\1{' + folder_name + ',',  # Replaces with @type{folder_name,
+                content
+            )
+            
+            # Only display the change in dry run mode
+            rel_path = bib_file.relative_to(self.refs_dir)
+            if dry_run:
+                print(f"Would change key from '{current_key}' to '{folder_name}' in {rel_path}")
+            else:
+                with open(bib_file, 'w') as f:
+                    f.write(new_content)
+                print(f"Changed key from '{current_key}' to '{folder_name}' in {rel_path}")
+                files_cleaned.append(str(rel_path))
+        
+        if not dry_run and files_cleaned:
+            # Process exports after cleaning
+            self.export()
+        
+        return files_cleaned
