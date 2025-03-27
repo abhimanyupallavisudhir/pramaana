@@ -17,6 +17,7 @@ _pramaana() {
         'trash:Move to trash'
         'show:Show contents'
         'open:Open with default application'
+        'clean:Update all citation keys to match folder names'
         'abs:Output absolute path'
         'rel:Output relative path'
     )

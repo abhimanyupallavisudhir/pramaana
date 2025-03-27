@@ -63,6 +63,10 @@ pramaana grep "sutton" cs/ --include="*.bib" # to only search .bib files (rather
 # Import from Zotero:
 # NOTE: see below for how to export your Zotero library in a way that can be imported into Pramana
 pramaana import /path/to/special_bbt_export.bib
+
+# Cleanup operations
+# For now this just does:
+# 1) change all citation keys to match name of folder containing bib file
 ```
 
 Basic commands (all of these support the basic options supported by the commands they wrap, e.g. `rm -rf`, but the options need to be added at the *end*):
@@ -74,7 +78,7 @@ pramaana trash path/to/subdir # if trash-cli is installed
 pramaana mv path1 path2
 pramaana cp path1 path2
 pramaana ln path1 path2 -s
-pramaana show cs/ai_books/sutton_barto/ # shows bibliographic content
+pramaana show cs/ai_books/sutton_barto/ # shows bibliographic content; add `-r` option to concatenate all recursively
 pramaana open /path/to/file/or/subdir # opens file or directory in default application; omit arguments to just open the `pramaana_path` folder
 pramaana abs path/to/file/or/subdir # appends relative path within pramaana to `pramaana_path`
 pramaana rel /path/to/file/or/subdir # relativizes a full path to `pramaana_path`
