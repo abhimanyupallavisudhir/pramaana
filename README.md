@@ -112,6 +112,8 @@ Pramaana stores its configuration in `~/.pramaana/config.json`. The default conf
 
 In addition you can modify the default templates for the `pramaana new ... --template=` option by storing/editing them as `~/.pramaana/templates/article.bib` etc. (The default templates will be dumped in `~./pramaana/templates/` after the first run; you can inspect them beforehand in `src/pramaana/core.py::DEFAULT_TEMPLATES`.)
 
+**EDITOR:** `pramaana` uses the environment variable `EDITOR` to determine which text editor to use to edit bib files, and defaults to `vim` if not present. Add `export EDITOR=nvim` etc. to your `.bashrc` or `.zshrc` to change this (the `export` is important).
+
 ## Shell Completion
 
 You can get:
